@@ -11,7 +11,7 @@
 
 <br><br>
 
-<img src="publish/gallery/05-film-elytra.png" width="100%" alt="A frame from a film: the first elytra flight">
+<img src="docs/readme/05-film-elytra.png" width="100%" alt="A frame from a film: the first elytra flight">
 
 </div>
 
@@ -37,12 +37,12 @@ Friends on Simple Voice Chat or a Discord call? Their voices go into the film, a
 
 <table>
   <tr>
-    <td><img src="publish/gallery/01-film-offer.png" alt="The film offer after the Ender Dragon"></td>
-    <td><img src="publish/gallery/04-film-intro.png" alt="The film's title"></td>
+    <td><img src="docs/readme/01-film-offer.png" alt="The film offer after the Ender Dragon"></td>
+    <td><img src="docs/readme/04-film-intro.png" alt="The film's title"></td>
   </tr>
   <tr>
-    <td><img src="publish/gallery/06-film-chapter-nether.png" alt="A chapter card"></td>
-    <td><img src="publish/gallery/07-film-base-timelapse.png" alt="The base timelapse"></td>
+    <td><img src="docs/readme/06-film-chapter-nether.png" alt="A chapter card"></td>
+    <td><img src="docs/readme/07-film-base-timelapse.png" alt="The base timelapse"></td>
   </tr>
 </table>
 

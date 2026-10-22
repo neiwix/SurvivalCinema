@@ -34,3 +34,7 @@ hs_err_*.log
 replay_*.log
 *.hprof
 *.jfr
+
+# not part of the mod: store pages, local tools
+publish/
+tools/
