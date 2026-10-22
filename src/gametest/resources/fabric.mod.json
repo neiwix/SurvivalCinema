@@ -1,0 +1,19 @@
+{
+	"schemaVersion": 1,
+	"id": "survivalcinema-gametest",
+	"version": "1.0.0",
+	"name": "Survival Cinema film test",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.survivalcinema.gametest.FilmAutoTest",
+			"com.survivalcinema.gametest.PlaythroughTest"
+		]
+	},
+	"mixins": [
+		"survivalcinema-gametest.mixins.json"
+	],
+	"depends": {
+		"survivalcinema": "*"
+	}
+}

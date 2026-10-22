@@ -1,0 +1,18 @@
+{
+	"required": true,
+	"package": "com.survivalcinema.client.mixin",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"BossHealthOverlayAccessor",
+		"ClientAdvancementsAccessor",
+		"ClientAdvancementsMixin",
+		"ClientPacketListenerMixin",
+		"GameRendererMixin",
+		"MinecraftServerAccessor",
+		"MusicManagerMixin",
+		"ViewerPoseMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

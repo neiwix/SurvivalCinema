@@ -1,0 +1,15 @@
+{
+	"required": false,
+	"package": "com.survivalcinema.client.mixin.flashback",
+	"compatibilityLevel": "JAVA_21",
+	"client": [
+		"ExportDoneWindowInvoker",
+		"ExportJobMixin",
+		"RecorderAccessor",
+		"ReplayUIMixin",
+		"VoiceChatPlaybackMixin"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

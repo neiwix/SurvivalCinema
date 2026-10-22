@@ -1,0 +1,47 @@
+{
+	"schemaVersion": 1,
+	"id": "survivalcinema",
+	"version": "${version}",
+	"name": "Survival Cinema",
+	"description": "Turns your survival world into a movie: finds the best moments, films them with cinematic cameras and keeps your voices. Addon for Flashback.",
+	"authors": ["neiwix"],
+	"contact": {
+		"homepage": "https://github.com/neiwix/sirvivalcinema",
+		"sources": "https://github.com/neiwix/sirvivalcinema",
+		"issues": "https://github.com/neiwix/sirvivalcinema/issues"
+	},
+	"license": "MIT",
+	"icon": "assets/survivalcinema/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"com.survivalcinema.client.SurvivalCinemaClient"
+		],
+		"voicechat": [
+			"com.survivalcinema.client.voice.CinemaVoicechatPlugin"
+		],
+		"modmenu": [
+			"com.survivalcinema.client.compat.ModMenuIntegration"
+		]
+	},
+	"mixins": [
+		{
+			"config": "survivalcinema.client.mixins.json",
+			"environment": "client"
+		},
+		{
+			"config": "survivalcinema.flashback.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.18.0",
+		"minecraft": "~1.21.11",
+		"java": ">=21",
+		"fabric-api": "*",
+		"flashback": ">=0.39.10 <0.40"
+	},
+	"suggests": {
+		"voicechat": "*"
+	}
+}

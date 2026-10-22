@@ -1,0 +1,36 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+
+# idea
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# vscode
+.settings/
+.vscode/
+bin/
+.classpath
+.project
+
+# fabric
+run/
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# films and recordings never go in the repository
+*.mp4
+*.flashback
+
+# java
+hs_err_*.log
+replay_*.log
+*.hprof
+*.jfr

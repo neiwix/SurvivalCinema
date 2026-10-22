@@ -1,0 +1,186 @@
+plugins {
+	id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+}
+
+version = "${project.mod_version}+${project.minecraft_version}"
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+	exclusiveContent {
+		forRepository {
+			maven {
+				name = 'Modrinth'
+				url = 'https://api.modrinth.com/maven'
+			}
+		}
+		filter {
+			includeGroup 'maven.modrinth'
+		}
+	}
+	maven {
+		name = 'TerraformersMC'
+		url = 'https://maven.terraformersmc.com/releases/'
+		content {
+			includeGroup 'com.terraformersmc'
+		}
+	}
+	maven {
+		name = 'henkelmax'
+		url = 'https://maven.maxhenkel.de/repository/public'
+	}
+}
+
+loom {
+	splitEnvironmentSourceSets()
+
+	mods {
+		'survivalcinema' {
+			sourceSet sourceSets.main
+			sourceSet sourceSets.client
+		}
+	}
+}
+
+configurations {
+	flashbackJar {
+		canBeConsumed = false
+		transitive = false
+	}
+}
+
+dependencies {
+	flashbackJar "maven.modrinth:flashback:${project.flashback_version}"
+}
+
+// Loom does not load the jar-in-jar libraries of mod dependencies in dev (mixinsquared, mixinconstraints, lattice...),
+// so Flashback crashes in runClient. Extract them from the Flashback jar and put them on the dev runtime classpath.
+def flashbackNestedDir = layout.buildDirectory.dir('flashback-nested').get().asFile
+def flashbackArtifact = configurations.flashbackJar.singleFile
+def flashbackNestedMarker = new File(flashbackNestedDir, flashbackArtifact.name + '.extracted')
+if (!flashbackNestedMarker.exists()) {
+	delete flashbackNestedDir
+	copy {
+		from(zipTree(flashbackArtifact)) {
+			include 'META-INF/jars/*.jar'
+			eachFile { it.path = it.name }
+		}
+		into flashbackNestedDir
+		includeEmptyDirs = false
+	}
+	flashbackNestedMarker.text = 'ok'
+}
+
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Flashback is ARR: we only compile against it and run it in dev, never bundle it.
+	modImplementation "maven.modrinth:flashback:${project.flashback_version}"
+	modLocalRuntime fileTree(dir: flashbackNestedDir, include: '*.jar')
+
+	// Simple Voice Chat is optional at runtime; compile against the API only.
+	compileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
+	clientCompileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
+	modLocalRuntime "maven.modrinth:simple-voice-chat:${project.voicechat_version}"
+
+	// Mod Menu is optional: its config button opens our settings.
+	modCompileOnly "com.terraformersmc:modmenu:${project.modmenu_version}"
+	modLocalRuntime "com.terraformersmc:modmenu:${project.modmenu_version}"
+
+	testImplementation platform("org.junit:junit-bom:${project.junit_version}")
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// End-to-end check in a real client: `gradlew runFilmTest` shoots a short film from the recordings in run/,
+// stops it half-way, continues it and closes the game (not part of `build`, it opens a game window).
+// Fabric's client gametests cannot do this: they tick the replay server in step with the client, while a
+// Flashback export waits for server ticks inside a single client tick.
+fabricApi {
+	configureTests {
+		createSourceSet = true
+		modId = 'survivalcinema-gametest'
+		enableGameTests = false
+		enableClientGameTests = false
+	}
+}
+
+loom {
+	runs {
+		filmTest {
+			inherit client
+			configName = 'Film test'
+			source sourceSets.gametest
+			runDir 'build/run/filmTest'
+			vmArg '-Dsurvivalcinema.filmtest=true'
+			// `gradlew runFilmTest -Preshoot=<world>/<film> [-Pclips=3,5]` shoots a film of run/ again instead
+			vmArg "-Dsurvivalcinema.filmtest.reshoot=${project.findProperty('reshoot') ?: ''}"
+			vmArg "-Dsurvivalcinema.filmtest.clips=${project.findProperty('clips') ?: ''}"
+			// `-Pfrom=build/run/playTest/playtest-evidence/game`: the recordings of the last playthrough instead of run/
+			vmArg "-Dsurvivalcinema.filmtest.from=${project.findProperty('from') ?: ''}"
+		}
+		// `gradlew runPlayTest`: a bot plays a short survival (two sessions, the dragon) and makes the film like a player
+		playTest {
+			inherit client
+			configName = 'Playthrough test'
+			source sourceSets.gametest
+			runDir 'build/run/playTest'
+			vmArg '-Dsurvivalcinema.playtest=true'
+			// big enough for screenshots of the mod's screens (publish/gallery)
+			programArgs '--width', '1600', '--height', '900'
+		}
+	}
+}
+
+processResources {
+	inputs.property 'version', project.version
+
+	filesMatching('fabric.mod.json') {
+		expand 'version': project.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 21
+	it.options.encoding = 'UTF-8'
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
+}
+
+jar {
+	inputs.property 'archivesName', project.base.archivesName
+
+	from('LICENSE') {
+		rename { "${it}_${inputs.properties.archivesName}" }
+	}
+}
+
+// The playthrough test as a mod for a real game folder (a copy of a modpack instance): `gradlew remapGametestJar`
+// puts build/libs/survival-cinema-<version>-gametest.jar next to the mod. Never published.
+tasks.register('gametestJar', Jar) {
+	from sourceSets.gametest.output
+	archiveClassifier = 'gametest-dev'
+	destinationDirectory = layout.buildDirectory.dir('devlibs')
+}
+tasks.register('remapGametestJar', net.fabricmc.loom.task.RemapJarTask) {
+	dependsOn tasks.named('gametestJar')
+	inputFile = tasks.named('gametestJar').flatMap { it.archiveFile }
+	archiveClassifier = 'gametest'
+	addNestedDependencies = false
+	// the mod's own classes, so calls to Minecraft methods through them (a screen's onClose) are remapped too
+	classpath.from(sourceSets.main.output, sourceSets.client.output)
+}
