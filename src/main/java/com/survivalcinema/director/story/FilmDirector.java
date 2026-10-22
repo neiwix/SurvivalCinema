@@ -1,5 +1,6 @@
 package com.survivalcinema.director.story;
 
+import com.survivalcinema.director.event.EventType;
 import com.survivalcinema.director.timelapse.BaseFinder;
 import com.survivalcinema.director.timelapse.TimelapsePlanner;
 import org.jetbrains.annotations.Nullable;
@@ -37,6 +38,11 @@ public final class FilmDirector {
 		items.add(EditDecisionList.Item.card(EditDecisionList.Kind.INTRO, StoryPlanner.INTRO_SECONDS, 0, 0, null, null));
 		ShotPlanner shots = new ShotPlanner();
 		int timelapseBefore = timelapse == null ? -1 : timelapseChapter(chapters);
+		if (timelapseBefore > 0 && timelapseBefore < chapters.size()) {
+			int before = chapters.size();
+			chapters = withLeadIn(chapters, timelapseBefore);
+			timelapseBefore -= before - chapters.size();
+		}
 		for (int c = 0; c < chapters.size(); c++) {
 			if (c == timelapseBefore) {
 				addTimelapse(items, timelapse);
@@ -70,6 +76,55 @@ public final class FilmDirector {
 			}
 		}
 		return chapters.size();
+	}
+
+	/** Scenes at most this far apart lead straight into the next one (setting the eyes of ender, then the jump in). */
+	static final int LEAD_IN_GAP_TICKS = 20 * 30;
+	/** The way to the End taken into its chapter is at most this long. */
+	static final int LEAD_IN_MAX_TICKS = 20 * 40;
+
+	/**
+	 * The scenes at the end of the chapter before {@code chapter} that lead straight into it (walking up to the End
+	 * portal and setting the eyes in, a minute before jumping in) go over to it: the base's timelapse goes in between
+	 * the two chapters and would cut the way to the End in half. Not across a change of dimension (coming back from the
+	 * Nether is the Nether's chapter's end). A chapter left with nothing goes.
+	 */
+	static List<Chapter> withLeadIn(List<Chapter> chapters, int chapter) {
+		Chapter before = chapters.get(chapter - 1);
+		Chapter into = chapters.get(chapter);
+		if (into.scenes().isEmpty()) {
+			return chapters;
+		}
+		Scene next = into.scenes().getFirst();
+		int moved = 0;
+		int ticks = 0;
+		for (int i = before.scenes().size() - 1; i >= 0; i--) {
+			Scene scene = before.scenes().get(i);
+			boolean leads = scene.session().index() == next.session().index() && next.startTick() - scene.endTick() <= LEAD_IN_GAP_TICKS
+				&& next.startTick() >= scene.endTick() && scene.primary().event().type() != EventType.DIMENSION_CHANGE
+				&& ticks + scene.durationTicks() <= LEAD_IN_MAX_TICKS;
+			if (!leads) {
+				break;
+			}
+			ticks += scene.durationTicks();
+			moved++;
+			next = scene;
+		}
+		if (moved == 0) {
+			return chapters;
+		}
+		List<Scene> stays = before.scenes().subList(0, before.scenes().size() - moved);
+		List<Scene> leadIn = new ArrayList<>(before.scenes().subList(before.scenes().size() - moved, before.scenes().size()));
+		leadIn.addAll(into.scenes());
+		List<Chapter> result = new ArrayList<>(chapters);
+		result.set(chapter, new Chapter(Math.min(into.dayFrom(), leadIn.getFirst().day()), into.dayTo(), into.dimension(),
+			into.subtitle(), List.copyOf(leadIn)));
+		if (stays.isEmpty()) {
+			result.remove(chapter - 1);
+		} else {
+			result.set(chapter - 1, new Chapter(before.dayFrom(), before.dayTo(), before.dimension(), before.subtitle(), List.copyOf(stays)));
+		}
+		return result;
 	}
 
 	/** "Our base, days 3-41", then the base growing. */

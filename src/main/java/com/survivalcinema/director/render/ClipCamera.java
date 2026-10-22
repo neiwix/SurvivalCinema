@@ -138,7 +138,12 @@ public final class ClipCamera {
 			List<CameraKey> planned = CameraPathBuilder.build(slice, shot, from, to, params, item.eventTick());
 			camera = OcclusionSolver.solve(slice, planned, probe, shot == ShotType.STATIC_LOOKAT, trail, after);
 			if (continues(cutFrom, trail, from)) {
-				camera = glideFrom(cutFrom, camera, slice);
+				List<CameraKey> glided = glideFrom(cutFrom, camera, slice);
+				// the glide goes round the player without looking where: through the rock of a Nether cave it showed the
+				// caves through the stone. Then the two shots cut instead.
+				if (glidesClear(glided, camera, slice, after != null ? after : probe)) {
+					camera = glided;
+				}
 			}
 		}
 		return new Keys(shot, camera, speedKeys(from, to, item.slowMotionFromTick()));
@@ -154,7 +159,7 @@ public final class ClipCamera {
 	 * The shot's camera taking over from the one before without a cut: it starts where that one stood and glides round
 	 * the player (its angle, distance and height from them blending over) to where this shot wants it.
 	 */
-	static List<CameraKey> glideFrom(CameraKey before, List<CameraKey> keys, Trail trail) {
+	public static List<CameraKey> glideFrom(CameraKey before, List<CameraKey> keys, Trail trail) {
 		if (keys.isEmpty()) {
 			return keys;
 		}
@@ -167,6 +172,8 @@ public final class ClipCamera {
 		int glide = (int) Math.max(MIN_GLIDE_TICKS, cutAngle(trail, from, before, keys.getFirst()) * GLIDE_TICKS_PER_DEGREE);
 		glide = Math.min(glide, Math.max(1, (keys.getLast().tick() - from) * 2 / 3));
 		double startYaw = Math.atan2(start.z(), start.x());
+		double lastTurn = Double.NaN;
+		double lastYawTurn = Double.NaN;
 		List<CameraKey> out = new ArrayList<>(keys.size());
 		for (CameraKey key : keys) {
 			if (key.tick() < from) {
@@ -183,13 +190,51 @@ public final class ClipCamera {
 			Vec end = key.position().sub(aim);
 			double endYaw = Math.atan2(end.z(), end.x());
 			double turn = Math.atan2(Math.sin(endYaw - startYaw), Math.cos(endYaw - startYaw));
+			// round the player the same way all along: with the new shot's place drifting past straight across, the
+			// shorter way would flip to the other side and the camera with it
+			if (!Double.isNaN(lastTurn)) {
+				turn += 2 * Math.PI * Math.round((lastTurn - turn) / (2 * Math.PI));
+			}
+			lastTurn = turn;
 			double yaw = startYaw + turn * e;
 			double distance = start.horizontalLength() + (end.horizontalLength() - start.horizontalLength()) * e;
 			double height = start.y() + (end.y() - start.y()) * e;
 			Vec at = aim.add(new Vec(Math.cos(yaw) * distance, height, Math.sin(yaw) * distance));
-			out.add(CameraPathBuilder.lookAt(key.tick(), at, aim));
+			// the view turns over from where the last shot looked (a side shot in flight looks level, not at the player)
+			CameraKey looking = CameraPathBuilder.lookAt(key.tick(), at, aim);
+			double yawTurn = looking.yaw() - before.yaw();
+			yawTurn -= 360 * Math.round((yawTurn - (Double.isNaN(lastYawTurn) ? 0 : lastYawTurn)) / 360);
+			lastYawTurn = yawTurn;
+			out.add(new CameraKey(key.tick(), at, (float) (before.yaw() + yawTurn * e),
+				(float) (before.pitch() + (looking.pitch() - before.pitch()) * e)));
 		}
 		return CameraPathBuilder.unwrapYaw(out);
+	}
+
+	/** A glide may lose sight of the player behind something for at most this share of it (a trunk going by). */
+	static final double GLIDE_MAX_HIDDEN = 0.15;
+
+	/**
+	 * Where the glide leaves the shot's own path ({@code shot}), its camera is never inside a block and mostly sees the
+	 * player.
+	 */
+	static boolean glidesClear(List<CameraKey> glided, List<CameraKey> shot, Trail trail, BlockProbe probe) {
+		int gliding = 0;
+		int hidden = 0;
+		for (int i = 0; i < glided.size(); i++) {
+			CameraKey key = glided.get(i);
+			if (key.position().distance(shot.get(i).position()) < 1e-6) {
+				continue;
+			}
+			gliding++;
+			if (OcclusionSolver.insideBlock(key.position(), probe)) {
+				return false;
+			}
+			if (probe.clearFraction(CameraPathBuilder.aimAt(trail, key.tick()), key.position()) < 0.99) {
+				hidden++;
+			}
+		}
+		return hidden <= gliding * GLIDE_MAX_HIDDEN;
 	}
 
 	/** How far round the player (seen from above) the new camera stands from the last one, in degrees. */

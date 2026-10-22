@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -274,8 +275,44 @@ class RealTerrainCameraTest {
 	 */
 	@Test
 	void walkingOutOfTheHouseHasNoJerk() throws IOException {
-		CameraScene scene = scene("house-door-exit");
-		List<CameraKey> keys = shoot(scene);
+		assertNoJerk(shoot(scene("house-door-exit")));
+	}
+
+	/**
+	 * A side shot of a zombie fight goes on from an orbit of the same fight, gliding round the player from where the
+	 * orbit left off. The place it glides to drifted past straight across from the start, the shorter way round flipped
+	 * and the camera jumped to the other side of the player (0:20 of the bot's film).
+	 */
+	@Test
+	void aShotGoingOnFromAnotherNeverJumpsAcross() throws IOException {
+		CameraKey before = scene("zombies-orbit").savedKeys.getLast();
+		CameraScene scene = scene("zombies-side");
+		List<CameraKey> keys = ClipCamera.glideFrom(before, shoot(scene), scene.trail);
+		assertEquals(0, keys.getFirst().position().distance(before.position()), 1e-6, "sets off from where the orbit left off");
+		assertEquals(before.pitch(), keys.getFirst().pitch(), 1e-3, "and looks where it looked");
+		assertNoJerk(keys);
+	}
+
+	/**
+	 * In the Nether the bot digs out ancient debris, filmed from a tripod, then walks back to the portal: the next shot
+	 * went on from the tripod, gliding round the bot through the netherrack, and the picture showed the caves through
+	 * the stone for a second. It cuts instead; nowhere is the camera inside a block.
+	 */
+	@Test
+	void aGlideNeverGoesThroughRock() throws IOException {
+		CameraKey before = scene("nether-debris-static").savedKeys.getLast();
+		CameraScene scene = scene("nether-to-portal-pullback");
+		List<CameraKey> keys = ClipCamera.build(scene.item, new ClipCamera.Piece(0, scene.fromTick, scene.toTick), scene.trail,
+			null, null, scene, before).camera();
+		for (CameraKey key : keys) {
+			assertFalse(OcclusionSolver.insideBlock(key.position(), scene), "camera in the rock at tick " + key.tick());
+		}
+		List<CameraKey> glided = ClipCamera.glideFrom(before, shoot(scene), scene.trail);
+		assertTrue(glided.stream().anyMatch(k -> OcclusionSolver.insideBlock(k.position(), scene)),
+			"test setup: the glide went through the rock");
+	}
+
+	private static void assertNoJerk(List<CameraKey> keys) {
 		for (int i = 1; i < keys.size(); i++) {
 			CameraKey last = keys.get(i - 1);
 			CameraKey key = keys.get(i);

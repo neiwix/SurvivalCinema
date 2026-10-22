@@ -81,7 +81,9 @@ class CameraPathBuilderTest {
 		}
 		double first = keys.getFirst().yaw();
 		double last = keys.getLast().yaw();
-		assertEquals(params.sweep(), Math.abs(last - first), 5, "orbit should sweep the configured angle");
+		// six seconds: never faster round the player than an orbit may go
+		assertEquals(Math.min(params.sweep(), CameraPathBuilder.ORBIT_DEGREES_PER_SECOND * 6), Math.abs(last - first), 5,
+			"orbit should sweep the configured angle, as fast as an orbit may");
 	}
 
 	@Test
@@ -158,7 +160,9 @@ class CameraPathBuilderTest {
 				"the swing jumped from " + previousSpeed + " to " + speed + " deg/s at tick " + keys.get(i).tick());
 			previousSpeed = speed;
 		}
-		assertTrue(fastest > 20, "test setup: the camera should swing around at all");
+		assertTrue(fastest > CameraPathBuilder.FOLLOW_MIN_DEGREES_PER_SECOND / 2, "test setup: the camera should swing around at all");
+		assertTrue(fastest <= CameraPathBuilder.FOLLOW_MIN_DEGREES_PER_SECOND + 1,
+			"someone standing and looking round is followed lazily, not swung round: " + fastest);
 	}
 
 	@Test

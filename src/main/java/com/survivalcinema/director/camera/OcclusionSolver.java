@@ -582,7 +582,7 @@ public final class OcclusionSolver {
 	}
 
 	/** The point is inside something solid (a camera there shows the caves through the stone). */
-	static boolean insideBlock(Vec point, BlockProbe probe) {
+	public static boolean insideBlock(Vec point, BlockProbe probe) {
 		return probe.clearFraction(point, point.add(Vec.UP.scale(0.05))) < 0.5;
 	}
 

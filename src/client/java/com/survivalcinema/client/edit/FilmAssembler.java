@@ -70,6 +70,8 @@ public final class FilmAssembler {
 	private static final double DEFAULT_CREDITS_SECONDS = 10;
 	/** Each shot of the base timelapse dissolves into the next over its last moments (at most a third of it). */
 	private static final double TIMELAPSE_DISSOLVE_SECONDS = 0.3;
+	/** Where a clip's player is teleported, its picture and sound go down to black and back up over this each way. */
+	private static final double SEAM_SECONDS = 0.35;
 	/** How loud the wind of an elytra flight is at full speed, next to the game's levelled sound. */
 	private static final double WIND_LEVEL = 0.45;
 
@@ -653,10 +655,30 @@ public final class FilmAssembler {
 			private @Nullable AudioStream audio;
 			private CallVoices.@Nullable Piece voice;
 			private double[] winds = new double[0];
+			/** How much of the frame read last shows (1, or less round a teleport: {@link #seam()}). */
+			private double seam = 1;
 
 			ClipReader(FilmTimeline.Segment segment, Map<String, Integer> lengths) {
 				this.segment = segment;
 				this.lengths = lengths;
+			}
+
+			/**
+			 * A clip is shot in several files where the player was teleported (through a portal into the End, back from
+			 * a death): there the picture and the game's sound dip through black for a moment instead of cutting hard
+			 * from one world to the other. The voices go on as they are.
+			 */
+			private double seam() {
+				int frames = Math.max(1, (int) Math.round(SEAM_SECONDS * fps));
+				double value = 1;
+				if (file > 0 && inFile < frames) {
+					value = (inFile + 0.5) / frames;
+				}
+				if (file < segment.files().size() - 1 && inFile >= expected - frames) {
+					value = Math.min(value, (expected - inFile - 0.5) / frames);
+				}
+				value = Math.max(0, Math.min(1, value));
+				return value * value * (3 - 2 * value);
 			}
 
 			/** The next frame, darkened for a fade; black (and silent) past the end of the files. */
@@ -671,15 +693,16 @@ public final class FilmAssembler {
 					}
 					openFile(segment.files().get(file));
 				}
+				seam = seam();
 				Frame picture = video.grabImage();
 				if (picture == null) {
 					picture = black(); // the file is a little shorter than it said
 				} else {
-					dim(picture, fade);
+					dim(picture, fade * seam);
 				}
 				java.util.Arrays.fill(sound, (short) 0);
 				audio.read(sound, samplesPerFrame);
-				wind = inFile < winds.length ? winds[inFile] : 0;
+				wind = (inFile < winds.length ? winds[inFile] : 0) * seam;
 				inFile++;
 				read++;
 				return picture;
@@ -687,7 +710,7 @@ public final class FilmAssembler {
 
 			/** Adds the sound of the frame read last (the game's and our recorded voices) to a mix; returns how loud it was. */
 			double mixInto(int[] mix, double fade, double weight) {
-				double gain = gameGain * fade * weight;
+				double gain = gameGain * fade * weight * seam;
 				for (int i = 0; i < samplesPerFrame; i++) {
 					mix[i] += (int) Math.round(sound[i] * gain);
 				}

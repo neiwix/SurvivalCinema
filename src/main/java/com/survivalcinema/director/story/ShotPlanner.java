@@ -40,7 +40,12 @@ public final class ShotPlanner {
 
 		List<Shot> shots = new ArrayList<>();
 		int slowFrom = slowMotionFrom(scene);
-		if (DragonFinale.deathStart(scene) >= 0) {
+		if (scene.primary().event().type() == EventType.ELYTRA_FLIGHT) {
+			// a flight is one take from right behind the player, from the take-off to the landing: a side shot lost
+			// them climbing on a rocket, and a cut in the middle of a flight breaks it
+			lastType = ShotType.CHASE;
+			shots.add(shot(scene, ShotType.CHASE, scene.startTick(), scene.endTick(), slowFrom, partner));
+		} else if (DragonFinale.deathStart(scene) >= 0) {
 			// the dragon's death: the blow, then the whole death animation in one shot, never cut in the middle
 			for (int[] part : DragonFinale.parts(scene)) {
 				shots.add(shot(scene, pick(options), part[0], part[1], slowFrom, partner));
@@ -131,7 +136,7 @@ public final class ShotPlanner {
 			case BOSS_FIGHT_START -> List.of(ShotType.STATIC_LOOKAT, ShotType.PULLBACK, ShotType.ORBIT);
 			case BOSS_DEFEATED, DRAGON_KILLED -> List.of(ShotType.ORBIT, ShotType.PULLBACK);
 			case DIMENSION_CHANGE, NEW_BIOME -> List.of(ShotType.PULLBACK, ShotType.STATIC_LOOKAT);
-			case ELYTRA_FLIGHT -> List.of(ShotType.SIDE, ShotType.CHASE);
+			case ELYTRA_FLIGHT -> List.of(ShotType.CHASE);
 			case ADVANCEMENT, OTHER_ADVANCEMENT, RARE_ITEM -> List.of(ShotType.ORBIT, ShotType.SIDE, ShotType.CHASE);
 			case VOICE_PEAK, VOICE_CROWD -> List.of(ShotType.STATIC_LOOKAT, ShotType.ORBIT, ShotType.SIDE);
 			case NIGHT_FALL, SLEEP, BUILD_BURST, NEW_DAY -> List.of(ShotType.STATIC_LOOKAT, ShotType.PULLBACK);

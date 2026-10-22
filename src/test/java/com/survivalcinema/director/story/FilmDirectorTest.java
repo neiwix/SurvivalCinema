@@ -162,6 +162,33 @@ class FilmDirectorTest {
 		assertEquals(2, FilmDirector.timelapseChapter(chapters), "the base's story comes before the End, the dragon stays the finale");
 	}
 
+	/**
+	 * Setting the eyes of ender in the frame at the base, then jumping in: the base's timelapse goes before the End
+	 * chapter and cut that in half (the walk to the portal stood before the timelapse, the End after it). The walk goes
+	 * over to the End chapter; coming back from the Nether before it stays where it was.
+	 */
+	@Test
+	void theWayIntoTheEndIsNotCutOffByTheTimelapse() {
+		SessionData session = new SessionData("r", 0, 30_000, List.of(), Worlds.standing(30_000));
+		Scene back = scene(session, 14_000, EventType.DIMENSION_CHANGE, "minecraft:overworld", 2);
+		Scene eyes = scene(session, 15_000, EventType.RARE_ITEM, "minecraft:overworld", 2);
+		Scene dragon = scene(session, 15_500, EventType.DRAGON_KILLED, "minecraft:the_end", 2);
+		List<Scene> scenes = List.of(
+			scene(session, 1000, EventType.KILL_STREAK, "minecraft:overworld", 1),
+			scene(session, 9000, EventType.DIMENSION_CHANGE, "minecraft:the_nether", 2),
+			scene(session, 12000, EventType.KILL, "minecraft:the_nether", 2),
+			back, eyes, dragon);
+		List<Chapter> chapters = StoryPlanner.chapters(scenes, 2);
+		int end = FilmDirector.timelapseChapter(chapters);
+		assertTrue(chapters.get(end - 1).scenes().contains(eyes), "test setup: the eyes end the chapter before the End");
+
+		List<Chapter> moved = FilmDirector.withLeadIn(chapters, end);
+		Chapter endChapter = moved.get(FilmDirector.timelapseChapter(moved));
+		assertEquals(List.of(eyes, dragon), endChapter.scenes(), "the way to the portal opens the End chapter");
+		assertTrue(moved.stream().anyMatch(c -> c.scenes().contains(back)), "coming back from the Nether is still in");
+		assertFalse(moved.get(FilmDirector.timelapseChapter(moved) - 1).scenes().contains(eyes));
+	}
+
 	@Test
 	void neverUsesTheSameShotTwiceInARow() {
 		List<EditDecisionList.Item> clips = plan(Worlds.busyWorld(), 600).clips();

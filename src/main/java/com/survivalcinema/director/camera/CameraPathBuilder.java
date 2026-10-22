@@ -23,6 +23,23 @@ public final class CameraPathBuilder {
 	private static final double HEADING_LAG_SECONDS = 0.5;
 	/** The camera never swings around the player faster than this (degrees per second). */
 	public static final double MAX_HEADING_DEGREES_PER_SECOND = 50;
+	/**
+	 * Following a player who walks, the camera swings round them at most this many degrees a second per block a second
+	 * of their speed ({@link #FOLLOW_MIN_DEGREES_PER_SECOND} to {@link #FOLLOW_MAX_DEGREES_PER_SECOND}): someone
+	 * fighting or looking round on the spot turns all the time, and a camera that turned with them went round and round.
+	 */
+	static final double FOLLOW_DEGREES_PER_BLOCK = 5;
+	static final double FOLLOW_MIN_DEGREES_PER_SECOND = 10;
+	static final double FOLLOW_MAX_DEGREES_PER_SECOND = 30;
+	/** Standing about, the camera follows the way they face even more lazily than when they walk. */
+	private static final double STANDING_LAG_SECONDS = 1.5;
+	/** Flying with elytra the camera keeps right behind them: it turns as fast as they do. */
+	private static final double FLYING_LAG_SECONDS = 0.25;
+	static final double FLYING_DEGREES_PER_SECOND = 120;
+	/** An orbit goes round the player at most this fast; a short one goes a shorter way round. */
+	static final double ORBIT_DEGREES_PER_SECOND = 20;
+	/** The aim's height follows a jump lazily, but never stays more than this far below the body (a climb). */
+	static final double MAX_AIM_LAG = 1.0;
 	/** Swings around the player start and stop gently over about this long, instead of at full speed at once. */
 	private static final double HEADING_EASE_SECONDS = 0.25;
 
@@ -72,11 +89,22 @@ public final class CameraPathBuilder {
 			}
 		}
 		double[] rawHeadings = new double[ticks.size()];
+		double[] lags = new double[ticks.size()];
+		double[] rates = new double[ticks.size()];
 		for (int i = 0; i < ticks.size(); i++) {
-			rawHeadings[i] = trail.headingAt(ticks.get(i) - RENDER_DELAY_TICKS, HEADING_SMOOTHING).yaw();
+			double tick = ticks.get(i) - RENDER_DELAY_TICKS;
+			rawHeadings[i] = trail.headingAt(tick, HEADING_SMOOTHING).yaw();
+			if (trail.sampleAt(tick).has(TrailSample.FLAG_FLYING_ELYTRA)) {
+				lags[i] = FLYING_LAG_SECONDS;
+				rates[i] = FLYING_DEGREES_PER_SECOND;
+			} else {
+				double speed = trail.positionAt(tick).sub(trail.positionAt(tick - 20)).horizontalLength();
+				rates[i] = Math.max(FOLLOW_MIN_DEGREES_PER_SECOND, Math.min(FOLLOW_MAX_DEGREES_PER_SECOND, speed * FOLLOW_DEGREES_PER_BLOCK));
+				double walking = Math.min(1, speed / 3);
+				lags[i] = STANDING_LAG_SECONDS + (HEADING_LAG_SECONDS - STANDING_LAG_SECONDS) * walking;
+			}
 		}
-		double[] headings = smoothOverTime(ticks,
-			followAngles(ticks, rawHeadings, HEADING_LAG_SECONDS, MAX_HEADING_DEGREES_PER_SECOND), HEADING_EASE_SECONDS);
+		double[] headings = smoothOverTime(ticks, followAngles(ticks, rawHeadings, lags, rates), HEADING_EASE_SECONDS);
 
 		double startHeadingYaw = headings[0];
 		Vec[] tripod = shot == ShotType.STATIC_LOOKAT || shot == ShotType.TWO_SHOT
@@ -94,7 +122,9 @@ public final class CameraPathBuilder {
 				// without a boss to look at, a shot over the shoulder is a chase
 				case CHASE, OVER_SHOULDER -> aim.sub(heading.scale(params.distance())).add(Vec.UP.scale(params.height()));
 				case ORBIT -> {
-					double angle = startHeadingYaw + 180 + params.sweep() * progress;
+					double most = ORBIT_DEGREES_PER_SECOND * (endTick - startTick) / 20.0;
+					double sweep = Math.signum(params.sweep()) * Math.min(Math.abs(params.sweep()), most);
+					double angle = startHeadingYaw + 180 + sweep * progress;
 					yield aim.add(Vec.fromYaw(angle).scale(params.distance())).add(Vec.UP.scale(params.height()));
 				}
 				case SIDE -> {
@@ -195,6 +225,15 @@ public final class CameraPathBuilder {
 	 * plus a hard cap on angular speed. This is what stops the camera from snapping behind the player.
 	 */
 	static double[] followAngles(List<Integer> ticks, double[] targets, double lagSeconds, double maxDegreesPerSecond) {
+		double[] lags = new double[targets.length];
+		double[] rates = new double[targets.length];
+		java.util.Arrays.fill(lags, lagSeconds);
+		java.util.Arrays.fill(rates, maxDegreesPerSecond);
+		return followAngles(ticks, targets, lags, rates);
+	}
+
+	/** {@link #followAngles}, with the lag and the speed cap of each key. */
+	static double[] followAngles(List<Integer> ticks, double[] targets, double[] lagSeconds, double[] maxDegreesPerSecond) {
 		double[] out = new double[targets.length];
 		if (targets.length == 0) {
 			return out;
@@ -204,9 +243,9 @@ public final class CameraPathBuilder {
 		for (int i = 1; i < targets.length; i++) {
 			double dt = (ticks.get(i) - ticks.get(i - 1)) / 20.0;
 			double delta = wrapDegrees(targets[i] - current);
-			double alpha = 1 - Math.exp(-dt / lagSeconds);
+			double alpha = 1 - Math.exp(-dt / lagSeconds[i]);
 			double change = delta * alpha;
-			double maxChange = maxDegreesPerSecond * dt;
+			double maxChange = maxDegreesPerSecond[i] * dt;
 			change = Math.max(-maxChange, Math.min(maxChange, change));
 			current += change;
 			out[i] = current;
@@ -488,7 +527,10 @@ public final class CameraPathBuilder {
 	public static Vec aimAt(Trail trail, double tick) {
 		double visible = tick - RENDER_DELAY_TICKS;
 		Vec p = trail.positionAt(visible);
-		return new Vec(p.x(), trail.laggedY(visible, HEIGHT_LAG_TICKS) + AIM_HEIGHT, p.z());
+		// a rocket shoots someone up 30 blocks a second: an aim lagging below would leave them above the picture (a fall
+		// keeps its lag, the body sinking into the picture and the camera catching up gently)
+		double lag = Math.max(-MAX_AIM_LAG, trail.laggedY(visible, HEIGHT_LAG_TICKS) - p.y());
+		return new Vec(p.x(), p.y() + lag + AIM_HEIGHT, p.z());
 	}
 
 	private static double easeInOut(double t) {
