@@ -1,20 +1,20 @@
 <div align="center">
 
-<img src="publish/icon-512.png" width="128" alt="Survival Cinema">
+<img src="docs/readme/header.svg" width="100%" alt="Survival Cinema — your survival world, turned into a movie, by itself">
 
-# Survival Cinema
+<img src="docs/readme/hotbar.svg" width="100%" alt="Minecraft 1.21.11 · Fabric 0.18+ · Fabric API · Flashback · Java 21 · MIT">
 
-**Your survival world, turned into a movie — by itself.**
+<a href="#what-it-does"><img src="docs/readme/button-features.svg" width="200" alt="What it does"></a>
+<a href="#gallery"><img src="docs/readme/button-gallery.svg" width="200" alt="Gallery"></a>
+<a href="#install"><img src="docs/readme/button-install.svg" width="200" alt="Install"></a>
+<br>
+<a href="#how-it-works"><img src="docs/readme/button-how.svg" width="200" alt="How it works"></a>
+<a href="#build"><img src="docs/readme/button-build.svg" width="200" alt="Build"></a>
+<a href="#ru"><img src="docs/readme/button-ru.svg" width="200" alt="По-русски"></a>
 
-[![Minecraft](https://img.shields.io/badge/Minecraft-1.21.11-62B47A?style=for-the-badge&logo=minecraft&logoColor=white)](https://minecraft.net)
-[![Fabric](https://img.shields.io/badge/Fabric-0.18%2B-DBD0B4?style=for-the-badge)](https://fabricmc.net)
-[![Flashback](https://img.shields.io/badge/Flashback-0.39.10%2B-8A5CF5?style=for-the-badge)](https://modrinth.com/mod/flashback)
-[![Java](https://img.shields.io/badge/Java-21-E76F00?style=for-the-badge&logo=openjdk&logoColor=white)](https://adoptium.net)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](LICENSE)
+<br><br>
 
-[What it does](#-what-it-does) · [Gallery](#-gallery) · [Install](#-install) · [How it works](#-how-it-works) · [Build](#-build-from-source) · [Русский](#-по-русски)
-
-<img src="publish/gallery/05-film-elytra.png" width="860" alt="A frame from a film: the first elytra flight">
+<img src="publish/gallery/05-film-elytra.png" width="100%" alt="A frame from a film: the first elytra flight">
 
 </div>
 
@@ -23,7 +23,10 @@ the night you nearly died, the moment everyone started yelling on voice chat —
 edits a real film of it: cinematic camera moves, chapter cards, music, a timelapse of your base growing and end credits
 with your world's stats. It plays right inside Minecraft, in a little cinema, and it is a normal MP4 you can share.
 
-## ✨ What it does
+<img src="docs/readme/divider.svg" width="100%" alt="">
+
+<a id="what-it-does"></a>
+<img src="docs/readme/title-features.svg" width="100%" alt="What it does">
 
 |  |  |
 |---|---|
@@ -36,7 +39,8 @@ with your world's stats. It plays right inside Minecraft, in a little cinema, an
 | 🏆 **Credits** | Days survived, blocks placed, mobs defeated, diamonds found, deaths — and everyone who played with you. |
 | 🍿 **In-game cinema** | The film plays the moment it is ready: pause, seek, volume. Stop shooting with Esc and continue later — even after a crash. |
 
-## 🖼️ Gallery
+<a id="gallery"></a>
+<img src="docs/readme/title-gallery.svg" width="100%" alt="Gallery">
 
 <table>
   <tr>
@@ -65,12 +69,15 @@ with your world's stats. It plays right inside Minecraft, in a little cinema, an
   </tr>
 </table>
 
-## 📦 Install
+<a id="install"></a>
+<img src="docs/readme/title-install.svg" width="100%" alt="Install">
 
 1. Minecraft **1.21.11** with **Fabric Loader 0.18+** and **Fabric API**.
 2. **[Flashback](https://modrinth.com/mod/flashback) 0.39.10** or a newer 0.39.x — the replay engine Survival Cinema films with.
 3. Drop the Survival Cinema jar into `mods`.
 4. Optional: [Simple Voice Chat](https://modrinth.com/plugin/simple-voice-chat) for voices, [Mod Menu](https://modrinth.com/mod/modmenu) for the settings button.
+
+<p align="center"><a href="https://modrinth.com/mod/flashback"><img src="docs/readme/button-download.svg" width="400" alt="Download Flashback first"></a></p>
 
 Client-side only — works on any server, vanilla or modded, and with Sodium, Iris, Lithium and the rest of Fabulously Optimized.
 
@@ -79,7 +86,8 @@ Client-side only — works on any server, vanilla or modded, and with Sodium, Ir
 > recorded too, plus your microphone. Voices are only recorded in worlds where you tick *Record voices* — and your friends
 > see no sign in Discord, so tell them.
 
-## 🧭 How it works
+<a id="how-it-works"></a>
+<img src="docs/readme/title-how.svg" width="100%" alt="How it works">
 
 ```mermaid
 flowchart LR
@@ -98,7 +106,8 @@ flowchart LR
 | [`src/test`](src/test/java/com/survivalcinema) | Unit tests, including camera tests on real terrain saved from films. |
 | [`src/gametest`](src/gametest/java/com/survivalcinema/gametest) | End-to-end tests in a real client — among them a **bot that plays a whole survival** (house, mine, Nether, elytra, the dragon) with real keys and makes the film. |
 
-## 🛠️ Build from source
+<a id="build"></a>
+<img src="docs/readme/title-build.svg" width="100%" alt="Build from source">
 
 Requires JDK 21.
 
@@ -115,12 +124,13 @@ The jar lands in `build/libs/`. Other useful tasks:
 | `./gradlew runPlayTest` | The bot plays two sessions, kills the dragon and makes a film (~15 min, opens a game window). |
 | `./gradlew runFilmTest` | Shoots a short film from the recordings in `run/`. Add `-Preshoot=<world>/<film> -Pclips=3,5` to shoot chosen clips of a film again. |
 
-## 🔒 Privacy
+<img src="docs/readme/title-privacy.svg" width="100%" alt="Privacy">
 
 Everything stays on your computer. Survival Cinema uploads nothing and has no servers. It asks before recording each
 world, and *Disk space* shows and deletes your recordings and films.
 
-## 🇷🇺 По-русски
+<a id="ru"></a>
+<img src="docs/readme/title-ru.svg" width="100%" alt="По-русски">
 
 **Survival Cinema** сам превращает твоё выживание в фильм. Играешь как обычно, мод записывает в фоне и замечает главное:
 первые алмазы, ночь, когда ты чуть не умер, момент, когда все заорали в голосовом. Когда захочешь, он снимает и монтирует
@@ -128,11 +138,6 @@ world, and *Disk space* shows and deletes your recordings and films.
 мира. Фильм играет прямо в игре, в маленьком кинотеатре, и сохраняется обычным MP4. Нужны Fabric, Fabric API и
 [Flashback](https://modrinth.com/mod/flashback). Интерфейс на английском и русском.
 
----
+<img src="docs/readme/footer.svg" width="100%" alt="Addon for Flashback by Moulberry. Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.">
 
-<div align="center">
-<sub>
-Survival Cinema is an addon for <a href="https://modrinth.com/mod/flashback">Flashback</a> by Moulberry, which does the recording and rendering.<br>
-Not made by or affiliated with the Flashback author or Mojang. Released under the <a href="LICENSE">MIT license</a>.
-</sub>
-</div>
+<p align="center"><sub>Released under the <a href="LICENSE">MIT license</a>.</sub></p>

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="40" viewBox="0 0 200 40" role="img" aria-label="Build">
+<title>Build</title>
+<g shape-rendering="crispEdges">
+<rect x="0" y="0" width="200" height="40" fill="#000"/>
+<rect x="2" y="2" width="196" height="36" fill="#6f6f6f"/>
+<rect x="2" y="2" width="196" height="2" fill="#a8a8a8"/>
+<rect x="2" y="2" width="2" height="34" fill="#a8a8a8"/>
+<rect x="2" y="36" width="196" height="2" fill="#4a4a4a"/>
+<path fill="#383838" d="M80 16h8v2h-8zM104 16h2v2h-2zM108 16h2v2h-2zM122 16h2v2h-2zM80 18h2v2h-2zM88 18h2v2h-2zM108 18h2v2h-2zM122 18h2v2h-2zM80 20h8v2h-8zM92 20h2v2h-2zM100 20h2v2h-2zM104 20h2v2h-2zM108 20h2v2h-2zM116 20h4v2h-4zM122 20h2v2h-2zM80 22h2v2h-2zM88 22h2v2h-2zM92 22h2v2h-2zM100 22h2v2h-2zM104 22h2v2h-2zM108 22h2v2h-2zM114 22h2v2h-2zM120 22h4v2h-4zM80 24h2v2h-2zM88 24h2v2h-2zM92 24h2v2h-2zM100 24h2v2h-2zM104 24h2v2h-2zM108 24h2v2h-2zM114 24h2v2h-2zM122 24h2v2h-2zM80 26h2v2h-2zM88 26h2v2h-2zM92 26h2v2h-2zM100 26h2v2h-2zM104 26h2v2h-2zM108 26h2v2h-2zM114 26h2v2h-2zM122 26h2v2h-2zM80 28h8v2h-8zM94 28h8v2h-8zM104 28h2v2h-2zM110 28h2v2h-2zM116 28h8v2h-8z"/><path fill="#e0e0e0" d="M78 14h8v2h-8zM102 14h2v2h-2zM106 14h2v2h-2zM120 14h2v2h-2zM78 16h2v2h-2zM86 16h2v2h-2zM106 16h2v2h-2zM120 16h2v2h-2zM78 18h8v2h-8zM90 18h2v2h-2zM98 18h2v2h-2zM102 18h2v2h-2zM106 18h2v2h-2zM114 18h4v2h-4zM120 18h2v2h-2zM78 20h2v2h-2zM86 20h2v2h-2zM90 20h2v2h-2zM98 20h2v2h-2zM102 20h2v2h-2zM106 20h2v2h-2zM112 20h2v2h-2zM118 20h4v2h-4zM78 22h2v2h-2zM86 22h2v2h-2zM90 22h2v2h-2zM98 22h2v2h-2zM102 22h2v2h-2zM106 22h2v2h-2zM112 22h2v2h-2zM120 22h2v2h-2zM78 24h2v2h-2zM86 24h2v2h-2zM90 24h2v2h-2zM98 24h2v2h-2zM102 24h2v2h-2zM106 24h2v2h-2zM112 24h2v2h-2zM120 24h2v2h-2zM78 26h8v2h-8zM92 26h8v2h-8zM102 26h2v2h-2zM108 26h2v2h-2zM114 26h8v2h-8z"/>
+</g>
+</svg>

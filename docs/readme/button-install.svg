@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="40" viewBox="0 0 200 40" role="img" aria-label="Install">
+<title>Install</title>
+<g shape-rendering="crispEdges">
+<rect x="0" y="0" width="200" height="40" fill="#000"/>
+<rect x="2" y="2" width="196" height="36" fill="#6f6f6f"/>
+<rect x="2" y="2" width="196" height="2" fill="#a8a8a8"/>
+<rect x="2" y="2" width="2" height="34" fill="#a8a8a8"/>
+<rect x="2" y="36" width="196" height="2" fill="#4a4a4a"/>
+<path fill="#383838" d="M71 16h6v2h-6zM105 16h2v2h-2zM123 16h2v2h-2zM129 16h2v2h-2zM73 18h2v2h-2zM105 18h2v2h-2zM123 18h2v2h-2zM129 18h2v2h-2zM73 20h2v2h-2zM79 20h8v2h-8zM93 20h8v2h-8zM103 20h6v2h-6zM113 20h6v2h-6zM123 20h2v2h-2zM129 20h2v2h-2zM73 22h2v2h-2zM79 22h2v2h-2zM87 22h2v2h-2zM91 22h2v2h-2zM105 22h2v2h-2zM119 22h2v2h-2zM123 22h2v2h-2zM129 22h2v2h-2zM73 24h2v2h-2zM79 24h2v2h-2zM87 24h2v2h-2zM93 24h6v2h-6zM105 24h2v2h-2zM113 24h8v2h-8zM123 24h2v2h-2zM129 24h2v2h-2zM73 26h2v2h-2zM79 26h2v2h-2zM87 26h2v2h-2zM99 26h2v2h-2zM105 26h2v2h-2zM111 26h2v2h-2zM119 26h2v2h-2zM123 26h2v2h-2zM129 26h2v2h-2zM71 28h6v2h-6zM79 28h2v2h-2zM87 28h2v2h-2zM91 28h8v2h-8zM107 28h2v2h-2zM113 28h8v2h-8zM125 28h2v2h-2zM131 28h2v2h-2z"/><path fill="#e0e0e0" d="M69 14h6v2h-6zM103 14h2v2h-2zM121 14h2v2h-2zM127 14h2v2h-2zM71 16h2v2h-2zM103 16h2v2h-2zM121 16h2v2h-2zM127 16h2v2h-2zM71 18h2v2h-2zM77 18h8v2h-8zM91 18h8v2h-8zM101 18h6v2h-6zM111 18h6v2h-6zM121 18h2v2h-2zM127 18h2v2h-2zM71 20h2v2h-2zM77 20h2v2h-2zM85 20h2v2h-2zM89 20h2v2h-2zM103 20h2v2h-2zM117 20h2v2h-2zM121 20h2v2h-2zM127 20h2v2h-2zM71 22h2v2h-2zM77 22h2v2h-2zM85 22h2v2h-2zM91 22h6v2h-6zM103 22h2v2h-2zM111 22h8v2h-8zM121 22h2v2h-2zM127 22h2v2h-2zM71 24h2v2h-2zM77 24h2v2h-2zM85 24h2v2h-2zM97 24h2v2h-2zM103 24h2v2h-2zM109 24h2v2h-2zM117 24h2v2h-2zM121 24h2v2h-2zM127 24h2v2h-2zM69 26h6v2h-6zM77 26h2v2h-2zM85 26h2v2h-2zM89 26h8v2h-8zM105 26h2v2h-2zM111 26h8v2h-8zM123 26h2v2h-2zM129 26h2v2h-2z"/>
+</g>
+</svg>
