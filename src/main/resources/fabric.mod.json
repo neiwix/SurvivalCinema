@@ -39,7 +39,7 @@
 		"minecraft": "~1.21.11",
 		"java": ">=21",
 		"fabric-api": "*",
-		"flashback": ">=0.39.10 <0.40"
+		"flashback": ">=0.39.10"
 	},
 	"suggests": {
 		"voicechat": "*"

@@ -33,7 +33,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Flashback has no API: we call its internals. Its version range in {@code fabric.mod.json} keeps it on the 0.39 line,
+ * Flashback has no API: we call its internals. {@code fabric.mod.json} only asks for 0.39.10 or newer,
  * but even a small update can rename something. So at startup the mod reads its own bytecode, finds every Flashback
  * class, method and field it uses, and checks they are all there, and that our mixins into Flashback were applied
  * (they are optional, a failed one does not crash the game). When something is missing, recording and filming stay

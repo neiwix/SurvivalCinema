@@ -251,6 +251,8 @@
 	"survivalcinema.setup.low_space": "Мало места на диске: свободно %s",
 	"survivalcinema.film.error.none_chosen": "Ни одна запись не выбрана — нажми «Записи…» и отметь, что снимать",
 	"survivalcinema.flashback.off": "Survival Cinema выключен",
+	"survivalcinema.encoder.crashed.title": "Фильм продолжится другим кодеком",
+	"survivalcinema.encoder.crashed": "Игра остановилась, пока %s кодировал фильм, больше он не используется. Продолжи фильм из меню паузы.",
 	"survivalcinema.flashback.unsupported": "Flashback %s не подходит этой версии Survival Cinema. Обнови Survival Cinema.",
 	"survivalcinema.tip.recording.title": "Идёт запись для фильма",
 	"survivalcinema.tip.recording.body": "Фильм соберёшь в меню паузы — кнопка с хлопушкой",

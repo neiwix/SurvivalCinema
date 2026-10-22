@@ -2,6 +2,7 @@ package com.survivalcinema.client.edit;
 
 import com.moulberry.flashback.combo_options.VideoCodec;
 import com.survivalcinema.client.SurvivalCinemaClient;
+import com.survivalcinema.client.capture.SessionStore;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -12,7 +13,9 @@ import org.bytedeco.javacv.FFmpegFrameRecorder;
 import org.bytedeco.javacv.Frame;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -48,6 +51,7 @@ public final class EncoderSelector {
 	 */
 	public static void startWarmUp() {
 		if (warmUp == null) {
+			noteCrashedEncoder();
 			warmUp = CompletableFuture.supplyAsync(() -> {
 				enterRenderThreadComApartment();
 				return pick(CHECK_WIDTH, CHECK_HEIGHT, CHECK_BITRATE);
@@ -92,7 +96,91 @@ public final class EncoderSelector {
 		Set<String> ordered = new LinkedHashSet<>(List.of(VideoCodec.H264.getEncoders()));
 		ordered.add(SOFTWARE_FALLBACK);
 		ordered.removeAll(NEVER_IN_EXPORTS);
+		ordered.removeAll(blocked());
 		return new ArrayList<>(ordered);
+	}
+
+	// ---- encoders that took the game down -----------------------------------------------------------------------
+	/*
+	 * A hardware encoder can pass the check above and still crash the game later in a long export (an old driver, the
+	 * graphics card out of memory). That crash happens inside FFmpeg and cannot be caught. So while a clip is being
+	 * encoded its encoder's name is written down, and removed when the clip is done. Found at the next start, it means
+	 * the game died encoding: that encoder is never used again, and the film continues with the next one (in the end
+	 * the software encoder, which is never blocked).
+	 */
+	private static final String IN_USE_FILE = "encoder-in-use.txt";
+	private static final String BLOCKED_FILE = "blocked-encoders.txt";
+	private static volatile @Nullable String crashed;
+
+	private static Path folder() {
+		return SessionStore.root();
+	}
+
+	/** Called just before Flashback starts encoding a clip with this encoder. */
+	public static void encoding(String encoder) {
+		try {
+			Files.createDirectories(folder());
+			Files.writeString(folder().resolve(IN_USE_FILE), encoder, StandardCharsets.UTF_8);
+		} catch (IOException e) {
+			SurvivalCinemaClient.LOGGER.warn("Could not note the encoder in use", e);
+		}
+	}
+
+	/** Called when the clip's export is over, however it went. */
+	public static void encodingDone() {
+		try {
+			Files.deleteIfExists(folder().resolve(IN_USE_FILE));
+		} catch (IOException e) {
+			SurvivalCinemaClient.LOGGER.warn("Could not clear the encoder in use", e);
+		}
+	}
+
+	/** The encoder the game crashed with last time, once (to tell the player), or null. */
+	public static @Nullable String takeCrashed() {
+		String name = crashed;
+		crashed = null;
+		return name;
+	}
+
+	private static void noteCrashedEncoder() {
+		Path inUse = folder().resolve(IN_USE_FILE);
+		try {
+			if (!Files.exists(inUse)) {
+				return;
+			}
+			String encoder = Files.readString(inUse, StandardCharsets.UTF_8).strip();
+			Files.deleteIfExists(inUse);
+			if (encoder.isEmpty() || encoder.equals(SOFTWARE_FALLBACK)) {
+				return; // the last resort stays: the crash was most likely something else
+			}
+			Set<String> blocked = new LinkedHashSet<>(blocked());
+			if (blocked.add(encoder)) {
+				Files.writeString(folder().resolve(BLOCKED_FILE), String.join("\n", blocked) + "\n", StandardCharsets.UTF_8);
+			}
+			crashed = encoder;
+			SurvivalCinemaClient.LOGGER.warn("The game stopped while encoding with {}: it is not used any more (delete {} to try it again)",
+				encoder, folder().resolve(BLOCKED_FILE));
+		} catch (IOException e) {
+			SurvivalCinemaClient.LOGGER.warn("Could not read the encoder in use", e);
+		}
+	}
+
+	private static Set<String> blocked() {
+		try {
+			Path file = folder().resolve(BLOCKED_FILE);
+			if (!Files.exists(file)) {
+				return Set.of();
+			}
+			Set<String> names = new LinkedHashSet<>();
+			for (String line : Files.readAllLines(file, StandardCharsets.UTF_8)) {
+				if (!line.isBlank()) {
+					names.add(line.strip());
+				}
+			}
+			return names;
+		} catch (IOException e) {
+			return Set.of();
+		}
 	}
 
 	/** Puts a thread that encodes video in the same COM apartment the encoders were checked in. */

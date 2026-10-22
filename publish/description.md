@@ -21,8 +21,10 @@ Got friends on Simple Voice Chat or a Discord call? Their voices go into the fil
 
 Client-side only, works on any server. Everything stays on your computer.
 
+**Open source** (MIT): [github.com/neiwix/SurvivalCinema](https://github.com/neiwix/SurvivalCinema) — bug reports and ideas welcome in Issues.
+
 ---
 
-*Beta: shooting takes a while (about as long as the film in Draft quality), and you can stop and continue any time. Found a bug? Tell us.*
+*Beta: shooting takes a while (about as long as the film in Draft quality), and you can stop and continue any time. Found a bug? [Open an issue](https://github.com/neiwix/SurvivalCinema/issues).*
 
 Survival Cinema is an addon for [Flashback](https://modrinth.com/mod/flashback) by Moulberry. Not affiliated with Flashback's author or Mojang.

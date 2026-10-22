@@ -78,6 +78,11 @@ public class SurvivalCinemaClient implements ClientModInitializer {
 				client.getToastManager().addToast(SystemToast.multiline(client, SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
 					Component.translatable("survivalcinema.flashback.off"), FlashbackCheck.problem()));
 			}
+			String crashed = screen instanceof TitleScreen ? EncoderSelector.takeCrashed() : null;
+			if (crashed != null) {
+				client.getToastManager().addToast(SystemToast.multiline(client, SystemToast.SystemToastId.PERIODIC_NOTIFICATION,
+					Component.translatable("survivalcinema.encoder.crashed.title"), Component.translatable("survivalcinema.encoder.crashed", crashed)));
+			}
 		});
 
 		VoiceActivityMeter.get().setActivityListener(CONTROLLER::noteActivity);

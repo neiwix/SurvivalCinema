@@ -251,6 +251,8 @@
 	"survivalcinema.setup.low_space": "Low disk space: %s free",
 	"survivalcinema.film.error.none_chosen": "No recording is ticked: press \"Recordings...\" and choose what to film",
 	"survivalcinema.flashback.off": "Survival Cinema is off",
+	"survivalcinema.encoder.crashed.title": "The film continues with another encoder",
+	"survivalcinema.encoder.crashed": "The game stopped while %s was encoding the film, so it won't be used again. Continue the film from the pause menu.",
 	"survivalcinema.flashback.unsupported": "Flashback %s doesn't fit this version of Survival Cinema. Update Survival Cinema.",
 	"survivalcinema.tip.recording.title": "Recording for the film",
 	"survivalcinema.tip.recording.body": "Make the film from the pause menu: the clapperboard button",

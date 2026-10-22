@@ -419,6 +419,7 @@ public final class RenderPipeline {
 				if (ticket != null && ticket.state() == ClipQueue.Ticket.State.WAITING) {
 					ClipQueue.clear(); // not handed to Flashback yet: take it back, shoot it again later
 					ticket = null;
+					EncoderSelector.encodingDone();
 					yield Step.SEEK;
 				}
 				yield null;
@@ -944,6 +945,7 @@ public final class RenderPipeline {
 		// from where the replay waits (see waitForSeek): its start, or a tick or two on in the piece's world
 		int at = FlashbackBridge.replayTick();
 		shotFrom = at >= piece.fromTick() && at < piece.toTick() - 1 ? at : piece.fromTick();
+		EncoderSelector.encoding(encoder); // a crash while it encodes keeps this encoder from being used again
 		ticket = ClipQueue.add(new FlashbackBridge.ClipRequest(name, shotFrom, piece.toTick(), quality.width, quality.height,
 			quality.framerate, quality.bitrate, encoder, firstPosition, first.yaw(), first.pitch(), output, timelapse), keys.camera(), keys.speed());
 		CinemaMode.setClip(new int[]{shotFrom, piece.toTick(), timelapse ? -1 : active.item().slowMotionFromTick()});
@@ -964,6 +966,7 @@ public final class RenderPipeline {
 		}
 		boolean exported = ticket.state() == ClipQueue.Ticket.State.DONE;
 		ticket = null;
+		EncoderSelector.encodingDone();
 		CinemaMode.setClip(null);
 		FlashbackBridge.forgetFinishedExports();
 		if (CinemaMode.consumeExportCancelled()) {

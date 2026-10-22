@@ -40,7 +40,7 @@
 
 1. **Проверка в игре.** Один раз пройти путь самому: немного игры с другом в голосовом чате или Discord, затем собрать фильм.
 2. **Своя сборка.** Хотя бы один короткий фильм в Fabulously Optimized (Sodium, Iris): мод должен с ними работать.
-3. **Исходники.** В `fabric.mod.json` ссылки на GitHub (Mod Menu их покажет). Репозиторий приватный: сделай его публичным или поле `Source` на сайтах оставь пустым.
+3. **Исходники.** Репозиторий публичный: в поля Source и Issues на обоих сайтах — https://github.com/neiwix/SurvivalCinema и …/issues.
 4. **Flashback.** Напиши Moulberry в Discord Flashback (discord.gg/mAYDZ9c7rD), что выходит аддон. Это вежливо, и он будет знать, что его внутренности кто-то использует.
 5. **Jar.** `gradlew build`, загружать `build/libs/survival-cinema-1.0.0-beta.1+1.21.11.jar`.
 
