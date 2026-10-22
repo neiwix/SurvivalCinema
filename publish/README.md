@@ -18,11 +18,11 @@
 
 - **Name:** Survival Cinema
 - **URL / slug:** `survival-cinema` (на 20.10.2026 свободен)
-- **Summary** (одна строка): *Turns your survival world into a movie by itself: the best moments, cinematic cameras, your voices, music and credits. Addon for Flashback.*
+- **Summary** (одна строка): *Play survival — it turns your best moments into a movie by itself. Addon for Flashback.*
 - **Project type:** Mod. **Categories:** Utility, Social. **Environment:** Client — required, Server — unsupported.
 - **License:** MIT.
-- **Icon:** `icon-512.png`. **Description:** содержимое `description.md`. В нём есть ссылка на картинку `https://cdn.modrinth.com/REPLACE/offer.png`: после загрузки скриншотов в галерею замени её на адрес картинки из галереи или просто удали эту строку.
-- **Gallery:** все 12 файлов из `publish/gallery` по порядку номеров; `05-film-elytra.png` или `07-film-base-timelapse.png` отметь Featured (самые красивые). Кадры фильма сняты ботом из автотеста (ник Player853), экраны — английская версия игры.
+- **Icon:** `icon-512.png`. **Description:** содержимое `description.md` как есть.
+- **Gallery:** все 12 файлов из `publish/gallery` по порядку номеров; `05-film-elytra.png` или `07-film-base-timelapse.png` отметь Featured (самые красивые). Кадры фильма сняты ботом из автотеста, экраны — английская версия игры.
 - **Version:**
   - Version number: `1.0.0-beta.1+1.21.11`, Version name: `1.0.0-beta.1`, channel **Beta**
   - Loaders: Fabric. Game versions: 1.21.11
@@ -38,10 +38,11 @@
 
 ## Перед публикацией
 
-1. **Автор.** В `src/main/resources/fabric.mod.json` поле `"authors": []` пустое. Скажи ник, я впишу (его видно в Mod Menu).
-2. **Ссылки.** Если заведёшь GitHub для исходников или Discord, их можно добавить в `fabric.mod.json` (`contact`) и на страницу.
-3. **Flashback.** Напиши Moulberry в Discord Flashback (discord.gg/mAYDZ9c7rD), что выходит аддон. Это вежливо, и он будет знать, что его внутренности кто-то использует.
-4. **Проверка в игре.** Перед бетой стоит один раз пройти путь самому: записать немного игры с другом в голосовом чате или Discord и собрать фильм.
+1. **Проверка в игре.** Один раз пройти путь самому: немного игры с другом в голосовом чате или Discord, затем собрать фильм.
+2. **Своя сборка.** Хотя бы один короткий фильм в Fabulously Optimized (Sodium, Iris): мод должен с ними работать.
+3. **Исходники.** В `fabric.mod.json` ссылки на GitHub (Mod Menu их покажет). Репозиторий приватный: сделай его публичным или поле `Source` на сайтах оставь пустым.
+4. **Flashback.** Напиши Moulberry в Discord Flashback (discord.gg/mAYDZ9c7rD), что выходит аддон. Это вежливо, и он будет знать, что его внутренности кто-то использует.
+5. **Jar.** `gradlew build`, загружать `build/libs/survival-cinema-1.0.0-beta.1+1.21.11.jar`.
 
 ## Обновление мода потом
 

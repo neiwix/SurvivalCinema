@@ -6,9 +6,9 @@
 	"description": "Turns your survival world into a movie: finds the best moments, films them with cinematic cameras and keeps your voices. Addon for Flashback.",
 	"authors": ["neiwix"],
 	"contact": {
-		"homepage": "https://github.com/neiwix/sirvivalcinema",
-		"sources": "https://github.com/neiwix/sirvivalcinema",
-		"issues": "https://github.com/neiwix/sirvivalcinema/issues"
+		"homepage": "https://github.com/neiwix/SurvivalCinema",
+		"sources": "https://github.com/neiwix/SurvivalCinema",
+		"issues": "https://github.com/neiwix/SurvivalCinema/issues"
 	},
 	"license": "MIT",
 	"icon": "assets/survivalcinema/icon.png",
