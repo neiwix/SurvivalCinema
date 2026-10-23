@@ -1,4 +1,4 @@
-<p align="center"><img src="docs/modrinth/banner.png" alt="Survival Cinema" width="760"></p>
+<p align="center"><img src="docs/modrinth/banner.svg" alt="Survival Cinema" width="760"></p>
 
 ![divider](docs/modrinth/divider.png)
 
