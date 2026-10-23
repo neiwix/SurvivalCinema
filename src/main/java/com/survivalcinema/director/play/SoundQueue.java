@@ -9,7 +9,8 @@ import java.util.Deque;
  * precise clock there is, because it is what the player hears.
  */
 public final class SoundQueue {
-	private record Piece(double start, int frames) {
+	/** @param speed film seconds per second of this sound (sound played faster keeps its pitch, but covers more film) */
+	private record Piece(double start, int frames, double speed) {
 	}
 
 	private final int rate;
@@ -23,8 +24,13 @@ public final class SoundQueue {
 
 	/** A buffer of {@code frames} sample frames starting at {@code start} film seconds went into the queue. */
 	public void queued(double start, int frames) {
-		pieces.addLast(new Piece(start, frames));
-		end = start + frames / (double) rate;
+		queued(start, frames, 1);
+	}
+
+	/** The same, for sound sped up (or slowed down) to {@code speed} film seconds per second. */
+	public void queued(double start, int frames, double speed) {
+		pieces.addLast(new Piece(start, frames, speed));
+		end = start + frames / (double) rate * speed;
 	}
 
 	/** The sound card finished the oldest {@code count} buffers and gave them back. */
@@ -45,10 +51,10 @@ public final class SoundQueue {
 		if (first == null) {
 			return end;
 		}
-		return first.start() + Math.max(0, sampleOffset) / (double) rate;
+		return first.start() + Math.max(0, sampleOffset) / (double) rate * first.speed();
 	}
 
-	/** Seconds of sound waiting in the queue after the given position (how far ahead the sound card is fed). */
+	/** Film seconds of sound waiting in the queue after the given position (how far ahead the sound card is fed). */
 	public double secondsAhead(int sampleOffset) {
 		if (pieces.isEmpty()) {
 			return 0;

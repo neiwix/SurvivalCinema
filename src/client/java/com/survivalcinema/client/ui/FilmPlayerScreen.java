@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -27,7 +28,8 @@ import java.util.List;
 /**
  * The in-game cinema: plays the finished film full screen, black bars around, with the controls of a video player
  * made of vanilla widgets (pause, a seek bar, volume, "open in a player", close). The controls hide while the film
- * plays and come back with the mouse. Space pauses, the arrows jump 5 seconds, Esc goes back to where it was opened.
+ * plays and come back with the mouse. Space pauses, the arrows jump 5 seconds, &lt; and &gt; change the speed, Esc goes
+ * back to where it was opened.
  * <p>
  * The game's music keeps quiet while it is open ({@code MusicManagerMixin}).
  */
@@ -38,18 +40,23 @@ public final class FilmPlayerScreen extends Screen {
 	private static final double JUMP_SECONDS = 5;
 	private static final int WHITE = 0xFFFFFFFF;
 	private static final int GREY = 0xFFA0A0A0;
+	private static final int SPEED_WIDTH = 40;
+	/** Like a video site's player; the sound keeps its pitch at all of them. */
+	private static final List<Double> SPEEDS = List.of(0.5, 0.75, 1.0, 1.25, 1.5, 2.0);
 
 	private final Screen parent;
 	private final Path file;
 	private final Component filmTitle;
 	private @Nullable FilmPlayer player;
 	private float volume = SurvivalCinemaConfig.get().playerVolume;
+	private double speed = 1;
 	private long lastActivity = System.nanoTime();
 	private double lastMouseX = Double.NaN;
 	private double lastMouseY = Double.NaN;
 	private boolean released;
 
 	private Button playButton;
+	private Button speedButton;
 	private SeekBar seekBar;
 	private VolumeSlider volumeSlider;
 	private List<AbstractWidget> controls = List.of();
@@ -71,7 +78,7 @@ public final class FilmPlayerScreen extends Screen {
 		if (player == null && !released) {
 			player = new FilmPlayer(file, minecraft.getWindow().getWidth(), minecraft.getWindow().getHeight());
 		}
-		boolean narrow = width < 400;
+		boolean narrow = width < 460;
 		int playWidth = 70;
 		int volumeWidth = narrow ? 80 : 110;
 		int systemWidth = narrow ? 90 : 120;
@@ -83,11 +90,33 @@ public final class FilmPlayerScreen extends Screen {
 		playButton = addRenderableWidget(Button.builder(playLabel(), b -> togglePause())
 			.bounds(MARGIN, rowY, playWidth, 20).build());
 		volumeSlider = addRenderableWidget(new VolumeSlider(MARGIN + playWidth + GAP, rowY, volumeWidth, 20));
+		speedButton = addRenderableWidget(Button.builder(speedLabel(), b -> changeSpeed(1, true))
+			.bounds(volumeSlider.getX() + volumeWidth + GAP, rowY, SPEED_WIDTH, 20)
+			.tooltip(Tooltip.create(Component.translatable("survivalcinema.player.speed.hint"))).build());
 		Button close = addRenderableWidget(Button.builder(Component.translatable("survivalcinema.player.close"), b -> onClose())
 			.bounds(width - MARGIN - closeWidth, rowY, closeWidth, 20).build());
 		Button system = addRenderableWidget(Button.builder(Component.translatable("survivalcinema.player.system"), b -> openInSystemPlayer())
 			.bounds(close.getX() - GAP - systemWidth, rowY, systemWidth, 20).build());
-		controls = List.of(seekBar, playButton, volumeSlider, system, close);
+		controls = List.of(seekBar, playButton, volumeSlider, speedButton, system, close);
+	}
+
+	/** One step faster (or slower); the button goes round from the fastest back to the slowest. */
+	private void changeSpeed(int step, boolean round) {
+		int next = SPEEDS.indexOf(speed) + step;
+		if (round) {
+			next = Math.floorMod(next, SPEEDS.size());
+		}
+		speed = SPEEDS.get(Math.max(0, Math.min(SPEEDS.size() - 1, next)));
+		if (player != null) {
+			player.setSpeed(speed);
+		}
+		speedButton.setMessage(speedLabel());
+		activity();
+	}
+
+	private Component speedLabel() {
+		String number = speed == Math.rint(speed) ? String.valueOf((int) speed) : String.valueOf(speed);
+		return Component.literal(number + "×");
 	}
 
 	// ---- playing ----
@@ -238,6 +267,15 @@ public final class FilmPlayerScreen extends Screen {
 			togglePause();
 			return true;
 		}
+		// Shift+> and Shift+<, like video sites (also without Shift)
+		if (event.key() == GLFW.GLFW_KEY_PERIOD) {
+			changeSpeed(1, false);
+			return true;
+		}
+		if (event.key() == GLFW.GLFW_KEY_COMMA) {
+			changeSpeed(-1, false);
+			return true;
+		}
 		if (getFocused() != volumeSlider) {
 			if (event.isLeft()) {
 				jump(-JUMP_SECONDS);
@@ -296,6 +334,16 @@ public final class FilmPlayerScreen extends Screen {
 			return new Status(FilmPlayer.State.FAILED, 0, 0, 0, false, false);
 		}
 		return new Status(film.state(), film.position(), film.duration(), film.shownPictures(), film.hasSound(), film.isSoundPlaying());
+	}
+
+	public void setSpeed(double speed) {
+		this.speed = speed;
+		if (player != null) {
+			player.setSpeed(speed);
+		}
+		if (speedButton != null) {
+			speedButton.setMessage(speedLabel());
+		}
 	}
 
 	public void seekTo(double seconds) {

@@ -130,6 +130,7 @@ loom {
 			vmArg "-Dsurvivalcinema.filmtest.from=${project.findProperty('from') ?: ''}"
 			// `-Pplay=<file.mp4>`: only plays that film in the in-game cinema for a while and logs how smoothly
 			vmArg "-Dsurvivalcinema.filmtest.play=${project.findProperty('play') ?: ''}"
+			vmArg "-Dsurvivalcinema.filmtest.speed=${project.findProperty('speed') ?: ''}"
 			if (project.hasProperty('play')) {
 				programArgs '--width', '1920', '--height', '1080' // the film is decoded at the window's size
 			}

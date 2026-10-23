@@ -104,7 +104,7 @@ final class FilmSound implements AutoCloseable {
 				upload.put(chunk, 0, read.count()).flip();
 				AL10.alBufferData(buffer, AL10.AL_FORMAT_STEREO16, upload, FilmDecoder.RATE);
 				AL10.alSourceQueueBuffers(source, buffer);
-				queue.queued(read.time(), read.count() / FilmDecoder.CHANNELS);
+				queue.queued(read.time(), read.count() / FilmDecoder.CHANNELS, read.speed());
 			}
 		}
 		AL10.alSourcef(source, AL10.AL_GAIN, Math.max(0, gain));

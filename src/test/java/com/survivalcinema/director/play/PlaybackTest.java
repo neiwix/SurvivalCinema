@@ -54,6 +54,26 @@ class PlaybackTest {
 	}
 
 	@Test
+	void atAnotherSpeedTheFilmMovesFasterOrSlower() {
+		PlaybackClock clock = new PlaybackClock();
+		clock.start(0);
+		clock.setSpeed(2, 10 * SECOND);
+		assertEquals(10, clock.now(10 * SECOND), 1e-9, "no jump when the speed changes");
+		assertEquals(14, clock.now(12 * SECOND), 1e-9, "then two seconds of film a second");
+		clock.setSpeed(0.5, 12 * SECOND);
+		assertEquals(15, clock.now(14 * SECOND), 1e-9);
+
+		// sped-up sound keeps its pitch, so a second of samples covers 1.5 s of the film
+		SoundQueue queue = new SoundQueue(48_000);
+		queue.queued(20.0, 48_000, 1.5);
+		queue.queued(21.5, 48_000, 1.5);
+		assertEquals(20.75, queue.position(24_000), 1e-9);
+		assertEquals(1.5 * 2 - 0.75, queue.secondsAhead(24_000), 1e-9);
+		queue.processed(1);
+		assertEquals(21.5, queue.position(0), 1e-9);
+	}
+
+	@Test
 	void theSoundQueueSaysWhatIsHeardNow() {
 		SoundQueue queue = new SoundQueue(48_000);
 		assertTrue(Double.isNaN(queue.position(0)), "nothing played yet");

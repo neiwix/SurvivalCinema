@@ -6,8 +6,8 @@ package com.survivalcinema.client.play;
  * (decoded before the seek was noticed) are thrown away.
  */
 final class SampleRing {
-	/** What one read returned. */
-	record Read(int count, double time) {
+	/** What one read returned. @param speed film seconds per second of this sound */
+	record Read(int count, double time, double speed) {
 	}
 
 	private final short[] data;
@@ -17,6 +17,8 @@ final class SampleRing {
 	private int size;
 	private int generation;
 	private double startTime = Double.NaN;
+	/** Film seconds per second of the sound in it: sped-up sound covers more film per sample. */
+	private double speed = 1;
 
 	SampleRing(int seconds, int rate, int channels) {
 		this.data = new short[seconds * rate * channels];
@@ -60,21 +62,22 @@ final class SampleRing {
 		}
 		start = (start + count) % data.length;
 		size -= count;
-		startTime += count / (double) channels / rate;
+		startTime += count / (double) channels / rate * speed;
 		notifyAll();
-		return new Read(count, time);
+		return new Read(count, time, speed);
 	}
 
 	synchronized double seconds() {
 		return size / (double) channels / rate;
 	}
 
-	/** Forgets everything: a seek to a new place starts the given generation. */
-	synchronized void clear(int newGeneration) {
+	/** Forgets everything: a seek to a new place (or a new speed) starts the given generation. */
+	synchronized void clear(int newGeneration, double newSpeed) {
 		start = 0;
 		size = 0;
 		generation = newGeneration;
 		startTime = Double.NaN;
+		speed = newSpeed;
 		notifyAll();
 	}
 

@@ -14,10 +14,22 @@ public final class PlaybackClock {
 	private boolean running;
 	private double anchor;
 	private long anchorNanos;
+	private double speed = 1;
 
 	/** Film seconds at the given {@link System#nanoTime()}. */
 	public double now(long nanos) {
-		return running ? anchor + (nanos - anchorNanos) / 1e9 : anchor;
+		return running ? anchor + (nanos - anchorNanos) / 1e9 * speed : anchor;
+	}
+
+	/** Film seconds per second: 2 plays twice as fast. Takes effect from the given moment on. */
+	public void setSpeed(double speed, long nanos) {
+		anchor = now(nanos);
+		anchorNanos = nanos;
+		this.speed = speed;
+	}
+
+	public double speed() {
+		return speed;
 	}
 
 	public boolean isRunning() {

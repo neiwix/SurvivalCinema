@@ -163,7 +163,8 @@
 	"survivalcinema.player.opening": "Opening the film...",
 	"survivalcinema.player.failed": "Could not open the film: %s",
 	"survivalcinema.player.no_sound": "No sound device: playing without sound",
-	"survivalcinema.player.hint": "Space - pause · ←/→ - 5 s · Esc - leave",
+	"survivalcinema.player.hint": "Space - pause · ←/→ - 5 s · </> - speed · Esc - leave",
+	"survivalcinema.player.speed.hint": "Playing speed (< and > on the keyboard); voices keep their pitch",
 
 	"survivalcinema.film.intro.subtitle": "A survival film",
 	"survivalcinema.film.date": "MMMM d, yyyy",

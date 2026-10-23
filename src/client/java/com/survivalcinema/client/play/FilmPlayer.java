@@ -237,6 +237,28 @@ public final class FilmPlayer implements AutoCloseable {
 		}
 	}
 
+	public double speed() {
+		return clock.speed();
+	}
+
+	/**
+	 * Plays faster or slower, voices at their own pitch. The sound is decoded again for the new speed from where the film
+	 * is, which takes a moment (like a seek).
+	 */
+	public void setSpeed(double speed) {
+		if (speed == clock.speed() || speed <= 0) {
+			return;
+		}
+		double at = position();
+		decoder.setSpeed(speed);
+		clock.setSpeed(speed, System.nanoTime());
+		if (texture != null && state != State.ENDED) {
+			boolean wasShown = shownAny;
+			seek(at);
+			showNext = !wasShown; // the picture on screen is the right one: no need to show it again
+		}
+	}
+
 	/** Jumps to a moment of the film; playing goes on there (or it stays paused). */
 	public void seek(double seconds) {
 		if (texture == null || state == State.FAILED) {

@@ -72,6 +72,12 @@ public class FilmAutoTest implements ClientModInitializer {
 	 * and logs how smoothly (the player's own log line when it closes).
 	 */
 	private static final String PLAY = System.getProperty("survivalcinema.filmtest.play", "").strip();
+	/** {@code -Pspeed=1.5}: plays it at that speed (from its second second on). */
+	private static final double PLAY_SPEED = speed(System.getProperty("survivalcinema.filmtest.speed", "").strip());
+
+	private static double speed(String given) {
+		return given.isEmpty() ? 1 : Double.parseDouble(given);
+	}
 	private static final int PLAY_SECONDS = 20;
 
 	private enum Stage {WAIT_TITLE, CALL, CALL_SAVED, SHOOT, ASK_STOP, STOPPING, WAIT_RESUME, RESUMED, WAIT_PLAYER, WATCHING, PAUSED, SEEKED, LOOK_SETUP, LOOK_OFFER, RESHOOT, PLAYING_FILE, OVER}
@@ -280,6 +286,9 @@ public class FilmAutoTest implements ClientModInitializer {
 				}
 			}
 			case PLAYING_FILE -> {
+				if (stageTicks == 20 && PLAY_SPEED != 1) {
+					player(mc).setSpeed(PLAY_SPEED);
+				}
 				if (stageTicks == 20 * PLAY_SECONDS) {
 					LOGGER.info("PLAYED: {}", player(mc).status());
 					mc.screen.onClose(); // the player logs how it went

@@ -4,6 +4,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.survivalcinema.client.SurvivalCinemaClient;
 import com.survivalcinema.director.play.Letterbox;
 import org.bytedeco.ffmpeg.global.avutil;
+import org.bytedeco.javacv.FFmpegFrameFilter;
 import org.bytedeco.javacv.FFmpegFrameGrabber;
 import org.bytedeco.javacv.Frame;
 import org.jetbrains.annotations.Nullable;
@@ -65,6 +66,9 @@ final class FilmDecoder implements AutoCloseable {
 	private volatile double seekTarget;
 	private volatile int picturesEndedGeneration = -1;
 	private volatile int soundEndedGeneration = -1;
+	private volatile double speed = 1;
+	/** The sound reader's scratch samples. */
+	private short[] soundSamples = new short[0];
 
 	/** @param screenWidth the window size in pixels: there is no point decoding more */
 	FilmDecoder(Path file, int screenWidth, int screenHeight) {
@@ -132,11 +136,16 @@ final class FilmDecoder implements AutoCloseable {
 		free.offer(image);
 	}
 
+	/** Film seconds per second from the next {@link #seek} on (the sound is decoded for it). */
+	void setSpeed(double speed) {
+		this.speed = speed;
+	}
+
 	/** Jumps to a place in the film; everything decoded so far is dropped. On the render thread. */
 	void seek(double seconds) {
 		seekTarget = seconds;
 		int next = generation.incrementAndGet();
-		sound.clear(next);
+		sound.clear(next, speed);
 		Picture stale;
 		while ((stale = pictures.poll()) != null) {
 			recycle(stale.image());
@@ -244,31 +253,83 @@ final class FilmDecoder implements AutoCloseable {
 		}
 	}
 
+	/**
+	 * Sound at another speed goes through FFmpeg's {@code atempo}: faster or slower, at the same pitch (voices stay
+	 * voices). What comes out covers the film from where the filter started, {@code speed} film seconds per second.
+	 */
 	private void decodeSound(FFmpegFrameGrabber grabber) throws Exception {
-		short[] samples = new short[0];
 		int current = generation.get();
-		while (!closed) {
-			if (generation.get() != current) {
-				current = generation.get();
-				grabber.setTimestamp(Math.round(seekTarget * 1e6));
-			}
-			if (soundEndedGeneration == current) {
-				Thread.sleep(10);
-				continue;
-			}
-			Frame frame = grabber.grabFrame(true, false, true, false);
-			if (frame == null) {
-				soundEndedGeneration = current;
-				continue;
-			}
-			if (frame.samples != null && frame.samples.length > 0) {
-				int count = interleave(frame.samples, samples);
-				if (count > samples.length) {
-					samples = new short[count];
-					interleave(frame.samples, samples);
+		FFmpegFrameFilter tempo = null;
+		double tempoStart = Double.NaN;
+		long tempoFrames = 0;
+		try {
+			while (!closed) {
+				if (generation.get() != current) {
+					current = generation.get();
+					grabber.setTimestamp(Math.round(seekTarget * 1e6));
+					closeQuietly(tempo);
+					tempo = null;
+				}
+				if (soundEndedGeneration == current) {
+					Thread.sleep(10);
+					continue;
+				}
+				Frame frame = grabber.grabFrame(true, false, true, false);
+				if (frame == null) {
+					soundEndedGeneration = current;
+					continue;
+				}
+				if (frame.samples == null || frame.samples.length == 0) {
+					continue;
 				}
 				int forGeneration = current;
-				sound.write(samples, count, frame.timestamp / 1e6, forGeneration, () -> closed || generation.get() != forGeneration);
+				double speed = this.speed;
+				if (speed == 1) {
+					write(frame, frame.timestamp / 1e6, forGeneration);
+					continue;
+				}
+				if (tempo == null) {
+					tempo = new FFmpegFrameFilter(String.format(java.util.Locale.ROOT, "atempo=%.4f", speed), CHANNELS);
+					tempo.setSampleFormat(avutil.AV_SAMPLE_FMT_S16);
+					tempo.setSampleRate(RATE);
+					tempo.start();
+					tempoStart = frame.timestamp / 1e6;
+					tempoFrames = 0;
+				}
+				tempo.push(frame);
+				Frame out;
+				while ((out = tempo.pull()) != null) {
+					if (out.samples == null || out.samples.length == 0) {
+						continue;
+					}
+					tempoFrames += write(out, tempoStart + tempoFrames / (double) RATE * speed, forGeneration) / CHANNELS;
+					if (closed || generation.get() != forGeneration) {
+						break;
+					}
+				}
+			}
+		} finally {
+			closeQuietly(tempo);
+		}
+	}
+
+	/** Puts a sound frame's samples in the ring, starting at {@code time} in the film. @return how many samples */
+	private int write(Frame frame, double time, int forGeneration) throws InterruptedException {
+		int count = interleave(frame.samples, soundSamples);
+		if (count > soundSamples.length) {
+			soundSamples = new short[count];
+			interleave(frame.samples, soundSamples);
+		}
+		sound.write(soundSamples, count, time, forGeneration, () -> closed || generation.get() != forGeneration);
+		return count;
+	}
+
+	private void closeQuietly(@Nullable FFmpegFrameFilter filter) {
+		if (filter != null) {
+			try {
+				filter.close();
+			} catch (Exception e) {
+				SurvivalCinemaClient.LOGGER.warn("Could not close the film's sound filter", e);
 			}
 		}
 	}
