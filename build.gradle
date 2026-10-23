@@ -128,6 +128,11 @@ loom {
 			vmArg "-Dsurvivalcinema.filmtest.clips=${project.findProperty('clips') ?: ''}"
 			// `-Pfrom=build/run/playTest/playtest-evidence/game`: the recordings of the last playthrough instead of run/
 			vmArg "-Dsurvivalcinema.filmtest.from=${project.findProperty('from') ?: ''}"
+			// `-Pplay=<file.mp4>`: only plays that film in the in-game cinema for a while and logs how smoothly
+			vmArg "-Dsurvivalcinema.filmtest.play=${project.findProperty('play') ?: ''}"
+			if (project.hasProperty('play')) {
+				programArgs '--width', '1920', '--height', '1080' // the film is decoded at the window's size
+			}
 		}
 		// `gradlew runPlayTest`: a bot plays a short survival (two sessions, the dragon) and makes the film like a player
 		playTest {

@@ -22,20 +22,22 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Reads the film with the FFmpeg inside Flashback on its own thread: pictures (RGBA, already scaled down to the window
- * when the film is bigger) into a few reusable images, sound (48 kHz stereo) into a two-second ring. The player takes
- * them on the render thread.
+ * Reads the film with the FFmpeg inside Flashback: pictures (RGBA, already scaled down to the window when the film is
+ * bigger) into a few reusable images, sound (48 kHz stereo) into a two-second ring. The player takes them on the
+ * render thread.
  * <p>
- * The images are a small fixed pool, which keeps the decoder only a few pictures ahead. Should the sound ever run dry
- * while every image waits for its moment (the file has video far ahead of its sound), pictures are skipped instead of
- * waiting, so the two can never block each other.
+ * Pictures and sound are read by two readers of the file, each on its own thread. With one reader the sound could only
+ * be decoded as far ahead as there were free images for the pictures in between: at 60 fps the few images cover a
+ * tenth of a second, the sound card wants a third of one queued, and most pictures had to be thrown away to keep the
+ * sound going (a 1080p 60 fps film stuttered at 18 fps). Now the sound reads ahead on its own and the pictures wait
+ * for free images, the decoder staying a few pictures ahead.
  */
 final class FilmDecoder implements AutoCloseable {
 	static final int RATE = 48_000;
 	static final int CHANNELS = 2;
 	private static final int IMAGES = 8;
-	/** Below this much decoded sound while playing, a picture without a free image is skipped instead of waited for. */
-	private static final double SOUND_LOW_SECONDS = 0.25;
+	/** Threads decoding the picture: a few, never all of the processor (the game runs beside it). */
+	private static final int DECODE_THREADS = Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors() / 2));
 
 	/** One decoded picture; its image goes back to the pool with {@link #recycle}. */
 	record Picture(NativeImage image, double time, int generation) {
@@ -45,6 +47,7 @@ final class FilmDecoder implements AutoCloseable {
 	private final int screenWidth;
 	private final int screenHeight;
 	private final Thread thread;
+	private volatile @Nullable Thread soundThread;
 	private final AtomicInteger generation = new AtomicInteger();
 	private final BlockingQueue<Picture> pictures = new ArrayBlockingQueue<>(IMAGES);
 	private final BlockingQueue<NativeImage> free = new ArrayBlockingQueue<>(IMAGES);
@@ -58,9 +61,10 @@ final class FilmDecoder implements AutoCloseable {
 	private volatile int height;
 	private volatile double duration;
 	private volatile boolean hasSound;
-	private volatile boolean playing;
-	private volatile double seekTo = Double.NaN;
-	private volatile int endedGeneration = -1;
+	/** Where the last seek goes; set before {@link #generation} moves on, so a reader seeing the new one finds it. */
+	private volatile double seekTarget;
+	private volatile int picturesEndedGeneration = -1;
+	private volatile int soundEndedGeneration = -1;
 
 	/** @param screenWidth the window size in pixels: there is no point decoding more */
 	FilmDecoder(Path file, int screenWidth, int screenHeight) {
@@ -109,12 +113,8 @@ final class FilmDecoder implements AutoCloseable {
 
 	/** Everything up to the end of the file was decoded (since the last seek). */
 	boolean ended() {
-		return endedGeneration == generation.get();
-	}
-
-	/** The player plays (skipping a picture is allowed) or waits (never skip). */
-	void setPlaying(boolean playing) {
-		this.playing = playing;
+		int now = generation.get();
+		return picturesEndedGeneration == now && (!hasSound || soundEndedGeneration == now);
 	}
 
 	/** The next decoded picture, or null. Pictures from before the last seek are recycled on the way. */
@@ -134,9 +134,9 @@ final class FilmDecoder implements AutoCloseable {
 
 	/** Jumps to a place in the film; everything decoded so far is dropped. On the render thread. */
 	void seek(double seconds) {
+		seekTarget = seconds;
 		int next = generation.incrementAndGet();
 		sound.clear(next);
-		seekTo = seconds;
 		Picture stale;
 		while ((stale = pictures.poll()) != null) {
 			recycle(stale.image());
@@ -162,9 +162,8 @@ final class FilmDecoder implements AutoCloseable {
 			grabber.setPixelFormat(avutil.AV_PIX_FMT_RGBA);
 			grabber.setImageWidth(size[0]);
 			grabber.setImageHeight(size[1]);
-			grabber.setSampleFormat(avutil.AV_SAMPLE_FMT_S16);
-			grabber.setSampleRate(RATE);
-			grabber.setAudioChannels(CHANNELS);
+			// one thread kept up with a 1080p 60 fps film only while the game left the processor alone
+			grabber.setVideoOption("threads", String.valueOf(DECODE_THREADS));
 			grabber.start();
 			width = size[0];
 			height = size[1];
@@ -175,54 +174,101 @@ final class FilmDecoder implements AutoCloseable {
 			}
 			SurvivalCinemaClient.LOGGER.info("Playing {} ({}x{} shown at {}x{}, {} s, sound: {})", file, videoWidth, videoHeight,
 				width, height, Math.round(duration), hasSound);
-			opened = true;
-			decode(grabber);
-		} catch (Throwable t) {
-			if (!closed) {
-				SurvivalCinemaClient.LOGGER.error("Could not play the film {}", file, t);
-				problem = String.valueOf(t.getMessage());
+			if (hasSound) {
+				Thread reader = new Thread(this::runSound, "SurvivalCinema-Player-Sound");
+				reader.setDaemon(true);
+				soundThread = reader;
+				reader.start();
 			}
+			opened = true;
+			decodePictures(grabber);
+		} catch (Throwable t) {
+			fail(t);
 		} finally {
-			if (grabber != null) {
-				try {
-					grabber.close();
-				} catch (Exception e) {
-					SurvivalCinemaClient.LOGGER.warn("Could not close the film {}", file, e);
-				}
+			closeQuietly(grabber);
+		}
+	}
+
+	private void runSound() {
+		FFmpegFrameGrabber grabber = null;
+		try {
+			grabber = new FFmpegFrameGrabber(file.toFile());
+			grabber.setSampleFormat(avutil.AV_SAMPLE_FMT_S16);
+			grabber.setSampleRate(RATE);
+			grabber.setAudioChannels(CHANNELS);
+			grabber.start();
+			decodeSound(grabber);
+		} catch (Throwable t) {
+			fail(t);
+		} finally {
+			closeQuietly(grabber);
+		}
+	}
+
+	private void fail(Throwable t) {
+		if (!closed) {
+			SurvivalCinemaClient.LOGGER.error("Could not play the film {}", file, t);
+			problem = String.valueOf(t.getMessage());
+		}
+	}
+
+	private void closeQuietly(@Nullable FFmpegFrameGrabber grabber) {
+		if (grabber != null) {
+			try {
+				grabber.close();
+			} catch (Exception e) {
+				SurvivalCinemaClient.LOGGER.warn("Could not close the film {}", file, e);
 			}
 		}
 	}
 
-	private void decode(FFmpegFrameGrabber grabber) throws Exception {
-		short[] samples = new short[0];
+	private void decodePictures(FFmpegFrameGrabber grabber) throws Exception {
 		int current = generation.get();
 		while (!closed) {
-			double target = seekTo;
-			if (!Double.isNaN(target)) {
-				seekTo = Double.NaN;
+			if (generation.get() != current) {
 				current = generation.get();
-				grabber.setTimestamp(Math.round(target * 1e6));
+				grabber.setTimestamp(Math.round(seekTarget * 1e6));
 			}
-			if (endedGeneration == current) {
+			if (picturesEndedGeneration == current) {
 				Thread.sleep(10); // at the end: wait for a seek (or the end of the film)
 				continue;
 			}
-			Frame frame = grabber.grabFrame(hasSound, true, true, false);
+			Frame frame = grabber.grabFrame(false, true, true, false);
 			if (frame == null) {
-				endedGeneration = current;
+				picturesEndedGeneration = current;
 				continue;
 			}
-			double time = frame.timestamp / 1e6;
 			if (frame.image != null && frame.image.length > 0 && frame.image[0] != null) {
-				putPicture(frame, time, current);
-			} else if (frame.samples != null && frame.samples.length > 0) {
+				putPicture(frame, frame.timestamp / 1e6, current);
+			}
+		}
+	}
+
+	private void decodeSound(FFmpegFrameGrabber grabber) throws Exception {
+		short[] samples = new short[0];
+		int current = generation.get();
+		while (!closed) {
+			if (generation.get() != current) {
+				current = generation.get();
+				grabber.setTimestamp(Math.round(seekTarget * 1e6));
+			}
+			if (soundEndedGeneration == current) {
+				Thread.sleep(10);
+				continue;
+			}
+			Frame frame = grabber.grabFrame(true, false, true, false);
+			if (frame == null) {
+				soundEndedGeneration = current;
+				continue;
+			}
+			if (frame.samples != null && frame.samples.length > 0) {
 				int count = interleave(frame.samples, samples);
 				if (count > samples.length) {
 					samples = new short[count];
 					interleave(frame.samples, samples);
 				}
 				int forGeneration = current;
-				sound.write(samples, count, time, forGeneration, () -> closed || generation.get() != forGeneration);
+				sound.write(samples, count, frame.timestamp / 1e6, forGeneration, () -> closed || generation.get() != forGeneration);
 			}
 		}
 	}
@@ -234,9 +280,6 @@ final class FilmDecoder implements AutoCloseable {
 				return;
 			}
 			image = free.poll(5, TimeUnit.MILLISECONDS);
-			if (image == null && playing && hasSound && sound.seconds() < SOUND_LOW_SECONDS) {
-				return; // every image waits for the sound, which waits for us: skip this picture
-			}
 		}
 		if (frame.imageWidth != width || frame.imageHeight != height) {
 			recycle(image);
@@ -305,8 +348,12 @@ final class FilmDecoder implements AutoCloseable {
 	public void close() {
 		closed = true;
 		sound.wake();
+		Thread reader = soundThread;
 		try {
 			thread.join(2000);
+			if (reader != null) {
+				reader.join(2000);
+			}
 		} catch (InterruptedException e) {
 			Thread.currentThread().interrupt();
 		}

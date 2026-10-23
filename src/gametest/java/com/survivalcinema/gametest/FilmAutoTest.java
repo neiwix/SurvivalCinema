@@ -67,8 +67,14 @@ public class FilmAutoTest implements ClientModInitializer {
 	private static final String CLIPS = System.getProperty("survivalcinema.filmtest.clips", "").strip();
 	/** {@code -Pfrom=<folder>}: another game folder than {@code run/} to take the recordings from (the playthrough's). */
 	private static final String FROM = System.getProperty("survivalcinema.filmtest.from", "").strip();
+	/**
+	 * {@code -Pplay=<file.mp4>}: instead of the test, plays that film in the in-game cinema for {@link #PLAY_SECONDS}
+	 * and logs how smoothly (the player's own log line when it closes).
+	 */
+	private static final String PLAY = System.getProperty("survivalcinema.filmtest.play", "").strip();
+	private static final int PLAY_SECONDS = 20;
 
-	private enum Stage {WAIT_TITLE, CALL, CALL_SAVED, SHOOT, ASK_STOP, STOPPING, WAIT_RESUME, RESUMED, WAIT_PLAYER, WATCHING, PAUSED, SEEKED, LOOK_SETUP, LOOK_OFFER, RESHOOT, OVER}
+	private enum Stage {WAIT_TITLE, CALL, CALL_SAVED, SHOOT, ASK_STOP, STOPPING, WAIT_RESUME, RESUMED, WAIT_PLAYER, WATCHING, PAUSED, SEEKED, LOOK_SETUP, LOOK_OFFER, RESHOOT, PLAYING_FILE, OVER}
 
 	private Stage stage = Stage.WAIT_TITLE;
 	private int ticks;
@@ -147,7 +153,10 @@ public class FilmAutoTest implements ClientModInitializer {
 		switch (stage) {
 			case WAIT_TITLE -> {
 				// the title screen, or the first-launch accessibility screen of a fresh game folder
-				if (mc.level == null && mc.screen != null && mc.getOverlay() == null && ticks > 40) {
+				if (mc.level == null && mc.screen != null && mc.getOverlay() == null && ticks > 40 && !PLAY.isEmpty()) {
+					mc.setScreen(new FilmPlayerScreen(mc.screen, Path.of(PLAY), "play"));
+					stage(Stage.PLAYING_FILE);
+				} else if (mc.level == null && mc.screen != null && mc.getOverlay() == null && ticks > 40) {
 					prepare(mc);
 					if (RESHOOT.isEmpty()) {
 						startCall(mc);
@@ -268,6 +277,13 @@ public class FilmAutoTest implements ClientModInitializer {
 					summary = String.format(Locale.ROOT, "%d clips shot, %d skipped, film %s (%d bytes)",
 						done.count(RenderProgress.Status.DONE), done.count(RenderProgress.Status.SKIPPED), edited, Files.size(edited));
 					stage(Stage.WAIT_PLAYER);
+				}
+			}
+			case PLAYING_FILE -> {
+				if (stageTicks == 20 * PLAY_SECONDS) {
+					LOGGER.info("PLAYED: {}", player(mc).status());
+					mc.screen.onClose(); // the player logs how it went
+					over(mc);
 				}
 			}
 			case WAIT_PLAYER -> {

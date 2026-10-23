@@ -39,6 +39,11 @@ public final class FilmPlayer implements AutoCloseable {
 	private boolean showNext = true;
 	private boolean shownAny;
 	private int shownPictures;
+	/** How the playing went, for the log: pictures shown too late to show, and frames the game drew meanwhile. */
+	private int latePictures;
+	private int drawnFrames;
+	private long playingNanos;
+	private long lastUpdateNanos;
 	private @Nullable String problem;
 
 	/** @param screenWidth window size in pixels (the film is decoded no bigger) */
@@ -138,7 +143,13 @@ public final class FilmPlayer implements AutoCloseable {
 			}
 		}
 		boolean running = playing && !buffering;
-		decoder.setPlaying(running);
+		if (running) {
+			drawnFrames++;
+			if (lastUpdateNanos != 0) {
+				playingNanos += nanos - lastUpdateNanos;
+			}
+		}
+		lastUpdateNanos = running ? nanos : 0;
 		if (sound != null) {
 			double heard = sound.update(decoder.sound(), running, gain);
 			if (running) {
@@ -163,6 +174,7 @@ public final class FilmPlayer implements AutoCloseable {
 			int chosen = FramePicker.pick(times, now);
 			for (int i = 0; i < chosen; i++) {
 				decoder.recycle(waiting.poll().image()); // late: skipped
+				latePictures++;
 			}
 			if (chosen >= 0) {
 				show(waiting.poll());
@@ -253,6 +265,11 @@ public final class FilmPlayer implements AutoCloseable {
 
 	@Override
 	public void close() {
+		double seconds = playingNanos / 1e9;
+		if (seconds > 1) {
+			SurvivalCinemaClient.LOGGER.info("Played {} s of {}: {} pictures shown, {} late; the game drew {} fps", Math.round(seconds),
+				file.getFileName(), shownPictures, latePictures, Math.round(drawnFrames / seconds));
+		}
 		FilmDecoder.Picture stale;
 		while ((stale = waiting.poll()) != null) {
 			decoder.recycle(stale.image());
