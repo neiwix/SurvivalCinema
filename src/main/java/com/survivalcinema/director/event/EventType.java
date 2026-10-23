@@ -24,6 +24,10 @@ public enum EventType {
 	DEATH(0.75, 0xFF5555),
 	BOSS_FIGHT_START(0.7, 0xAA00AA),
 	DIMENSION_CHANGE(0.6, 0x5555FF),
+	/** Came into a structure for the first time (a shipwreck, an outpost, a village); its subject is the kind. */
+	STRUCTURE(0.55, 0xAA7744),
+	/** Opened a chest of a structure, still full: its subject is the kind of structure it belongs to. */
+	LOOT(0.5, 0xFFD700),
 	NEAR_DEATH(0.55, 0xFFAA00),
 	ELYTRA_FLIGHT(0.5, 0xFFFFFF),
 	KILL_STREAK(0.5, 0xAA0000),
@@ -44,9 +48,15 @@ public enum EventType {
 
 	// made by the director, never recorded: good-looking travel footage to give the film air between big moments
 	SCENERY(0.1, 0xFFFFFF),
+	/** The very start of a survival: the first tree, the first crafting table (see StoryBeats). */
+	FIRST_STEPS(0.6, 0xFFFFFF),
+	/** Coming for the first time to the place that became home: stepping off the boat onto its shore. */
+	ARRIVAL(0.6, 0xFFFFFF),
 
 	// bookkeeping
-	BUILD_ACTIVITY(0.0, 0xAA5500);
+	BUILD_ACTIVITY(0.0, 0xAA5500),
+	/** Logs broken, in 30 second windows (where, how many): the first tree of a survival. */
+	WOOD_ACTIVITY(0.0, 0x8B5A2B);
 
 	private final double baseWeight;
 	private final int markerColour;
@@ -86,6 +96,9 @@ public enum EventType {
 
 	/** Bookkeeping events that are useful to the director but would only clutter Flashback's timeline. */
 	public boolean showAsMarker() {
-		return this != BUILD_ACTIVITY && this != NEW_DAY && this != SESSION_START && this != SCENERY;
+		return switch (this) {
+			case BUILD_ACTIVITY, WOOD_ACTIVITY, NEW_DAY, SESSION_START, SCENERY, FIRST_STEPS, ARRIVAL -> false;
+			default -> true;
+		};
 	}
 }

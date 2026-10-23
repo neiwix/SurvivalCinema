@@ -3,6 +3,7 @@ package com.survivalcinema.director.story;
 import com.survivalcinema.director.camera.CameraPathBuilder;
 import com.survivalcinema.director.camera.ShotType;
 import com.survivalcinema.director.camera.Trail;
+import com.survivalcinema.director.camera.TrailSample;
 import com.survivalcinema.director.event.Details;
 import com.survivalcinema.director.event.EventType;
 
@@ -11,12 +12,14 @@ import java.util.List;
 
 /**
  * The cinematographer: picks how each scene is filmed. Each kind of moment has its favourite shots, a shot type is
- * never used twice in a row, long scenes are covered by two shots, and big moments get slow motion.
+ * never used twice in a row, long scenes are covered by two shots (not a flight or a ride), and big moments get slow
+ * motion.
  */
 public final class ShotPlanner {
 	static final int SPLIT_ABOVE_TICKS = 20 * 12;
 	static final double STANDING_SPEED = 1.0;
 	static final double FAST_SPEED = 7.0;
+	static final double RIDE_SHARE = 0.6;
 
 	private ShotType lastType;
 	private int nextSide = 1;
@@ -50,6 +53,12 @@ public final class ShotPlanner {
 			for (int[] part : DragonFinale.parts(scene)) {
 				shots.add(shot(scene, pick(options), part[0], part[1], slowFrom, partner));
 			}
+		} else if (scene.primary().event().type() == EventType.ARRIVAL || scene.durationTicks() > SPLIT_ABOVE_TICKS && isRide(scene)) {
+			// a long ride is one take too: cut in the middle, the camera jumps across water that goes on moving; and so is
+			// coming ashore, from the boat to the first steps on land
+			ShotType type = lastType == ShotType.CHASE ? ShotType.SIDE : ShotType.CHASE;
+			lastType = type;
+			shots.add(shot(scene, type, scene.startTick(), scene.endTick(), slowFrom, partner));
 		} else if (scene.durationTicks() > SPLIT_ABOVE_TICKS && !crossesPortal(scene)) {
 			int middle = scene.startTick() + scene.durationTicks() / 2;
 			// Cut where the main moment is not, so the climax plays in one continuous shot.
@@ -63,6 +72,23 @@ public final class ShotPlanner {
 			shots.add(shot(scene, pick(options), scene.startTick(), scene.endTick(), slowFrom, partner));
 		}
 		return shots;
+	}
+
+	/** Riding a boat, a horse or a minecart most of the scene. */
+	static boolean isRide(Scene scene) {
+		Trail trail = scene.session().trail();
+		if (trail == null || trail.isEmpty()) {
+			return false;
+		}
+		int riding = 0;
+		int samples = 0;
+		for (int t = scene.startTick(); t <= scene.endTick(); t += 10) {
+			samples++;
+			if ((trail.sampleAt(t).flags() & TrailSample.FLAG_IN_VEHICLE) != 0) {
+				riding++;
+			}
+		}
+		return riding >= samples * RIDE_SHARE;
 	}
 
 	/** A trip through a portal: the camera cuts on the jump already, it needs no cut of its own. */
@@ -142,6 +168,12 @@ public final class ShotPlanner {
 			case NIGHT_FALL, SLEEP, BUILD_BURST, NEW_DAY -> List.of(ShotType.STATIC_LOOKAT, ShotType.PULLBACK);
 			case SESSION_START -> List.of(ShotType.PULLBACK, ShotType.ORBIT);
 			case SCENERY -> List.of(ShotType.SIDE, ShotType.PULLBACK, ShotType.CHASE);
+			case ARRIVAL -> List.of(ShotType.CHASE, ShotType.SIDE);
+			// the first tree: around the player at work
+			case FIRST_STEPS -> List.of(ShotType.ORBIT, ShotType.STATIC_LOOKAT);
+			// a place found: pulling back shows it; its chest: around the player opening it
+			case STRUCTURE -> List.of(ShotType.PULLBACK, ShotType.STATIC_LOOKAT, ShotType.ORBIT);
+			case LOOT -> List.of(ShotType.ORBIT, ShotType.SIDE, ShotType.STATIC_LOOKAT);
 			// together: the dialogue two-shot; apart (talking over voice chat): their voices over gentle footage of us
 			case CONVERSATION -> List.of(ShotType.TWO_SHOT, ShotType.ORBIT, ShotType.STATIC_LOOKAT, ShotType.SIDE);
 			default -> List.of(ShotType.CHASE, ShotType.ORBIT);

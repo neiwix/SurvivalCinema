@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
 import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
+import net.fabricmc.fabric.api.event.client.player.ClientPlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.event.player.UseBlockCallback;
 import net.minecraft.client.Minecraft;
@@ -103,7 +104,18 @@ public class SurvivalCinemaClient implements ClientModInitializer {
 			if (level.isClientSide() && sink != null && player.getItemInHand(hand).getItem() instanceof BlockItem) {
 				CONTROLLER.builds.onPlace(hitResult.getBlockPos().relative(hitResult.getDirection()), sink);
 			}
+			// sneaking with something in hand uses the item on the block, not the block: no chest opens
+			boolean itemOnly = player.isSecondaryUseActive() && (!player.getMainHandItem().isEmpty() || !player.getOffhandItem().isEmpty());
+			if (level.isClientSide() && sink != null && !itemOnly) {
+				CONTROLLER.structures.onUse(Minecraft.getInstance(), hitResult.getBlockPos());
+			}
 			return InteractionResult.PASS;
+		});
+		ClientPlayerBlockBreakEvents.AFTER.register((level, player, pos, state) -> {
+			EventSink sink = CONTROLLER.sink();
+			if (sink != null) {
+				CONTROLLER.wood.onBreak(Minecraft.getInstance(), pos, state, sink);
+			}
 		});
 
 		HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "recording_indicator"), new RecordingIndicator(CONTROLLER));

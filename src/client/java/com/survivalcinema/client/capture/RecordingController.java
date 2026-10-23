@@ -8,6 +8,8 @@ import com.survivalcinema.client.capture.watch.ChatWatcher;
 import com.survivalcinema.client.capture.watch.CombatWatcher;
 import com.survivalcinema.client.capture.watch.ItemWatcher;
 import com.survivalcinema.client.capture.watch.MovementWatcher;
+import com.survivalcinema.client.capture.watch.StructureWatcher;
+import com.survivalcinema.client.capture.watch.WoodWatcher;
 import com.survivalcinema.client.capture.watch.WorldWatcher;
 import com.survivalcinema.client.flashback.FlashbackBridge;
 import com.survivalcinema.client.flashback.FlashbackCheck;
@@ -41,6 +43,8 @@ public final class RecordingController {
 	public final BuildWatcher builds = new BuildWatcher();
 	public final MovementWatcher movement = new MovementWatcher();
 	public final ChatWatcher chat = new ChatWatcher();
+	public final WoodWatcher wood = new WoodWatcher();
+	public final StructureWatcher structures = new StructureWatcher();
 
 	private final TrajectoryRecorder trajectory = new TrajectoryRecorder();
 	private final CompanionTracker companions = new CompanionTracker();
@@ -177,6 +181,8 @@ public final class RecordingController {
 		worldWatcher.tick(mc, s);
 		items.tick(mc, s);
 		builds.tick(mc, s);
+		wood.tick(mc, s);
+		structures.tick(mc, s);
 		movement.tick(mc, s);
 		companions.tick(mc, s);
 		VoiceActivityMeter.get().tick(mc, s);
@@ -341,6 +347,8 @@ public final class RecordingController {
 		worldWatcher.reset();
 		items.reset();
 		builds.reset();
+		wood.reset();
+		structures.reset();
 		movement.reset();
 		VoiceActivityMeter.get().reset();
 	}

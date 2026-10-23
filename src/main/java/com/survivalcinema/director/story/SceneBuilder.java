@@ -20,6 +20,8 @@ public final class SceneBuilder {
 	static final int MERGE_GAP_TICKS = 40;
 	static final int MAX_SCENE_TICKS = 20 * 30;
 	static final int MIN_SCENE_TICKS = 40;
+	/** What is left of a scene a better one took time from must still be a shot worth its cut. */
+	static final int MIN_LEFTOVER_TICKS = 100;
 	/** Ticks between the last sample before a jump and the first after it. */
 	private static final int JUMP_TICKS = 4;
 	/** Before an arrival through a portal: walking up to it and the seconds standing in its swirl. */
@@ -64,7 +66,9 @@ public final class SceneBuilder {
 					start = Math.max(start, other.endTick());
 				}
 			}
-			if (!lost && end - start >= MIN_SCENE_TICKS) {
+			// cut short by a better scene: a few seconds left over would only be a jerky cut right after it
+			boolean cut = start != scene.startTick() || end != scene.endTick();
+			if (!lost && end - start >= (cut ? MIN_LEFTOVER_TICKS : MIN_SCENE_TICKS)) {
 				kept.add(scene.withRange(start, end));
 			}
 		}
@@ -253,6 +257,9 @@ public final class SceneBuilder {
 	/** {lead-in, follow-up} in ticks for a moment of this kind. */
 	static int[] window(GameEvent event) {
 		EventType type = event.type();
+		if ((type == EventType.ADVANCEMENT || type == EventType.OTHER_ADVANCEMENT) && isArmour(event)) {
+			return new int[]{80, 200}; // made the armour: putting it on comes after, and is the moment
+		}
 		return switch (type) {
 			case DEATH, OTHER_DEATH -> new int[]{160, 50};
 			case NEAR_DEATH -> new int[]{120, 60};
@@ -266,6 +273,9 @@ public final class SceneBuilder {
 			case DRAGON_KILLED -> new int[]{200, 210};
 			case DIMENSION_CHANGE -> new int[]{PORTAL_LEAD_TICKS, 120};
 			case NEW_BIOME -> new int[]{40, 120};
+			// coming in and looking around it; walking up to the chest and opening it
+			case STRUCTURE -> new int[]{80, 160};
+			case LOOT -> new int[]{160, 60};
 			case ADVANCEMENT, OTHER_ADVANCEMENT, RARE_ITEM -> new int[]{100, 50};
 			case ELYTRA_FLIGHT -> new int[]{20, Math.min(240, Math.max(80, Details.getInt(event.detail(), "ticks", parseInt(event.detail(), 160))))};
 			case BUILD_BURST -> new int[]{0, 160};
@@ -276,6 +286,12 @@ public final class SceneBuilder {
 			case SLEEP -> new int[]{20, 60};
 			default -> new int[]{60, 60};
 		};
+	}
+
+	/** "Suit Up", "Cover Me with Diamonds", "Cover Me in Debris". */
+	static boolean isArmour(GameEvent event) {
+		String id = event.subject();
+		return id != null && (id.endsWith("/obtain_armor") || id.endsWith("/shiny_gear") || id.endsWith("/netherite_armor"));
 	}
 
 	private static int parseInt(String text, int fallback) {

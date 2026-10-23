@@ -122,6 +122,21 @@ class BaseTimelapseTest {
 		assertEquals(2, base.visits());
 	}
 
+	/** The chest of a first shelter and a torch put up later, out at the edge: the view stays on the house. */
+	@Test
+	void aFewBlocksAtTheEdgeDoNotWidenTheBase() {
+		List<GameEvent> events = new ArrayList<>();
+		for (int i = 0; i < 6; i++) {
+			events.add(build(600 + i * 700, 3 + i / 3, BASE_X + i % 2, BASE_Z, 50));
+		}
+		events.add(build(300, 3, BASE_X + 33, BASE_Z - 10, 2));
+		events.add(build(11_000, 6, BASE_X - 34, BASE_Z + 8, 2));
+		BaseFinder.Base base = BaseFinder.find(List.of(session(0, events, trail(5000, 9000, 0))), BaseFinder.Rules.DEFAULT);
+		assertNotNull(base);
+		assertTrue(base.radius() < 20, "radius " + base.radius());
+		assertEquals(304, base.blocks(), "they still belong to it");
+	}
+
 	@Test
 	void aPortalBuiltThenUsedStaysInTheOverworld() {
 		// the window was logged after the player went through: it says the Nether, the path says where it was built

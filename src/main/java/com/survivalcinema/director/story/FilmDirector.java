@@ -30,7 +30,9 @@ public final class FilmDirector {
 		}
 
 		List<ScoredEvent> scored = new HighlightScorer().score(sessions);
-		List<Scene> scenes = new SceneBuilder().build(scored);
+		List<Scene> scenes = new ArrayList<>(new SceneBuilder().build(scored));
+		BaseFinder.Base base = timelapse != null ? timelapse.base() : BaseFinder.find(sessions, options.baseRules());
+		scenes.addAll(StoryBeats.find(sessions, base));
 		List<Scene> scenery = new SceneryFinder().find(sessions);
 		List<Chapter> chapters = new StoryPlanner().plan(sessions, scenes, scenery, storySeconds);
 

@@ -19,12 +19,16 @@ import java.util.Set;
 /**
  * Picks which scenes make the film and in what chapters. It works like an editor going through the footage:
  * <ul>
- *     <li>the opening, the first night and the dragon fight are always in;</li>
+ *     <li>the opening, how the survival began, coming to the place that became home, the first night, the first
+ *     shipwreck or outpost explored and the dragon fight are always in;</li>
  *     <li>then the best scenes, but with variety: every scene of a kind already picked makes the next one of that
  *     kind worth less, and some kinds have a hard limit (nobody wants six scenes of getting hit);</li>
  *     <li>the whole adventure is covered: a scene right next to one already picked is worth less, and a part of the
  *     playthrough with nothing picked yet is worth more;</li>
  *     <li>voice-only moments may be at most 40% of the film, so it still shows the adventure;</li>
+ *     <li>the fighting just before a fight in the film is its beginning, not more of the same: no limit for it;</li>
+ *     <li>if the limits leave the film shorter than requested, they loosen for the good moments left over that are
+ *     each a new thing (advancements, biomes), not for the tenth death or kill;</li>
  *     <li>if the good moments run out before the requested length, a second pass takes medium moments and travel
  *     footage, but never junk; a world with little going on gets a shorter film instead of filler;</li>
  *     <li>finally everything goes back into chronological order, split into chapters by in-game day and first
@@ -48,6 +52,10 @@ public final class StoryPlanner {
 	static final int NEIGHBOUR_TICKS = 20 * 120;
 	static final double NEIGHBOUR_FACTOR = 0.7;
 	static final double EMPTY_PART_BONUS = 1.3;
+	/** Fighting this soon before a fight in the film, this close to it, leads up to it ({@link #leadsUpTo}). */
+	static final int FIGHT_LEAD_UP_TICKS = 20 * 120;
+	static final double FIGHT_LEAD_UP_BLOCKS = 48;
+	static final double FIGHT_LEAD_UP_FACTOR = 1.3;
 	static final int MIN_TRIMMED_TICKS = 60;
 	static final int OPENING_TICKS = 120;
 	/** How long before the dragon dies its fight scene may start and still belong to the finale (3 minutes). */
@@ -60,7 +68,15 @@ public final class StoryPlanner {
 		Map.entry(EventType.SLEEP, 1), Map.entry(EventType.NEW_DAY, 0), Map.entry(EventType.RARE_ITEM, 3),
 		Map.entry(EventType.ELYTRA_FLIGHT, 2), Map.entry(EventType.OTHER_ADVANCEMENT, 2), Map.entry(EventType.BIG_FALL, 2),
 		Map.entry(EventType.SCENERY, 3), Map.entry(EventType.DEATH, 4), Map.entry(EventType.OTHER_DEATH, 2),
-		Map.entry(EventType.ADVANCEMENT, 6), Map.entry(EventType.CONVERSATION, 2)));
+		Map.entry(EventType.ADVANCEMENT, 6), Map.entry(EventType.CONVERSATION, 2), Map.entry(EventType.STRUCTURE, 3),
+		Map.entry(EventType.LOOT, 2)));
+	/** The first places of a kind (a shipwreck, an outpost) always in: one per this many seconds of film, two at least. */
+	static final int FIRST_PLACE_SECONDS = 150;
+	/** When the good moments run out before the film is full, the limits per kind go up this much for the rest. */
+	static final double RELAXED_CAP_FACTOR = 2;
+	/** Kinds where every moment is a different one: each advancement is had once, each biome found once. */
+	static final Set<EventType> ALWAYS_NEW = java.util.EnumSet.of(EventType.ADVANCEMENT, EventType.OTHER_ADVANCEMENT,
+		EventType.NEW_BIOME);
 	/** Calm talks reserved per 5 minutes of film, so it is the story of friends and not only of fights. */
 	static final double CONVERSATIONS_PER_5_MIN = 1;
 	/** A talk after the dragon is the perfect epilogue; the first talk of the world is how it all began. */
@@ -109,6 +125,9 @@ public final class StoryPlanner {
 		private final boolean[] partFilled;
 		private int used;
 		private int voiceOnlyTicks;
+		private double capFactor = 1;
+		/** Fights that got their beginning in over the limit. */
+		private final Set<Scene> ledUpTo = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
 
 		Selection(List<SessionData> sessions, int targetSeconds) {
 			this.sessions = sessions;
@@ -130,13 +149,21 @@ public final class StoryPlanner {
 		List<Scene> run(List<Scene> candidates, List<Scene> scenery) {
 			List<Scene> pool = new ArrayList<>(candidates);
 			for (Scene scene : mustHaves(pool)) {
-				add(scene);
 				pool.remove(scene);
+				if (!overlapsSelected(scene)) {
+					add(scene);
+				}
 			}
 			opening().filter(o -> !overlapsSelected(o)).ifPresent(this::add);
 			reserveConversations(pool);
 
 			fill(pool, MIN_SCENE_SCORE);
+			if (used < budget) {
+				// room left: more of the story (the first tools, the shore after a long crossing, the fight before the
+				// boss of it) rather than a film shorter than asked for
+				capFactor = RELAXED_CAP_FACTOR;
+				fill(pool, MIN_SCENE_SCORE);
+			}
 			if (used < budget * SECOND_PASS_BELOW) {
 				pool.addAll(scenery);
 				fill(pool, SECOND_PASS_MIN_SCORE);
@@ -168,6 +195,9 @@ public final class StoryPlanner {
 				}
 				if (isVoiceOnly(chosen) && voiceOnlyTicks + filmTicks(chosen) > budget * VOICE_ONLY_SHARE) {
 					continue;
+				}
+				if (overCap(best)) {
+					ledUpTo.add(leadsUpToSelected(best)); // over the limit only as the beginning of that fight
 				}
 				add(chosen);
 			}
@@ -267,23 +297,46 @@ public final class StoryPlanner {
 
 		private double value(Scene scene) {
 			EventType type = scene.primary().event().type();
-			int count = typeCounts.getOrDefault(type, 0);
-			if (count >= cap(type, targetSeconds)) {
+			if (overCap(scene) && leadsUpToSelected(scene) == null) {
 				return 0;
 			}
 			if (type != EventType.CONVERSATION && isDragonTheFinale() && isAfterDragon(scene)) {
 				return 0; // after the final battle only the friends' talk comes, then the credits
 			}
+			int count = typeCounts.getOrDefault(type, 0);
 			double value = scene.score() * talkBonus(scene) * Math.pow(type.isVoice() ? VOICE_DIVERSITY_FACTOR : DIVERSITY_FACTOR, count);
 			for (Scene s : selected) {
 				if (s.session() == scene.session() && Math.abs(s.primary().tick() - scene.primary().tick()) < NEIGHBOUR_TICKS) {
-					value *= NEIGHBOUR_FACTOR;
+					value *= leadsUpTo(scene, s) ? FIGHT_LEAD_UP_FACTOR : NEIGHBOUR_FACTOR;
 				}
 			}
 			if (!partFilled[part(scene)]) {
 				value *= EMPTY_PART_BONUS;
 			}
 			return value;
+		}
+
+		/**
+		 * Over the limit for its kind. It loosens only for the kinds where every moment is a new one; the tenth death or
+		 * kill is more of the same, and a world of random fights would fill the film with them.
+		 */
+		private boolean overCap(Scene scene) {
+			EventType type = scene.primary().event().type();
+			double factor = ALWAYS_NEW.contains(type) ? capFactor : 1;
+			return typeCounts.getOrDefault(type, 0) >= cap(type, targetSeconds) * factor;
+		}
+
+		/**
+		 * The bigger fight in the film this scene is the beginning of, or null. One beginning each: the fighting before
+		 * the beginning is not the story any more, and a world of fights would chain them all in.
+		 */
+		private @Nullable Scene leadsUpToSelected(Scene scene) {
+			for (Scene s : selected) {
+				if (s.session() == scene.session() && s.score() > scene.score() && !ledUpTo.contains(s) && leadsUpTo(scene, s)) {
+					return s;
+				}
+			}
+			return null;
 		}
 
 		private void add(Scene scene) {
@@ -327,7 +380,32 @@ public final class StoryPlanner {
 					.max(Comparator.comparingInt(Scene::startTick))
 					.ifPresent(must::add);
 			}
+			// how it began and how home was found (StoryBeats), then the first of each kind of place explored
+			pool.stream().filter(s -> isBeat(s.primary().event().type())).forEach(must::add);
+			must.addAll(firstPlaces(pool));
 			return must;
+		}
+
+		/**
+		 * The first shipwreck, outpost, village... of the world: the first one looted, or entered when none was looted. Not
+		 * every kind in a short film: the best few, the others compete like any moment (they score high as firsts).
+		 */
+		private List<Scene> firstPlaces(List<Scene> pool) {
+			Map<String, Scene> byKind = new HashMap<>();
+			for (Scene scene : pool) {
+				GameEvent e = scene.primary().event();
+				if ((e.type() != EventType.LOOT && e.type() != EventType.STRUCTURE) || !e.first()) {
+					continue;
+				}
+				Scene had = byKind.get(e.subject());
+				if (had == null || e.type() == EventType.LOOT && had.primary().event().type() != EventType.LOOT) {
+					byKind.put(e.subject(), scene);
+				}
+			}
+			List<Scene> places = new ArrayList<>(byKind.values());
+			places.sort(Comparator.comparingDouble(Scene::score).reversed());
+			int most = Math.max(2, targetSeconds / FIRST_PLACE_SECONDS);
+			return places.size() > most ? places.subList(0, most) : places;
 		}
 
 		private Optional<Scene> opening() {
@@ -349,6 +427,31 @@ public final class StoryPlanner {
 			}
 			return false;
 		}
+	}
+
+	/**
+	 * The fighting just before a fight already in the film, in the same place: the crossbowmen of an outpost before its
+	 * iron golem. It tells how it came to that, so it is not "the same place again" but its beginning.
+	 */
+	static boolean leadsUpTo(Scene scene, Scene fight) {
+		if (!isFight(scene) || !isFight(fight) || scene.endTick() > fight.startTick()
+			|| fight.startTick() - scene.endTick() > FIGHT_LEAD_UP_TICKS) {
+			return false;
+		}
+		GameEvent a = scene.primary().event();
+		GameEvent b = fight.primary().event();
+		return Math.hypot(a.x() - b.x(), a.z() - b.z()) <= FIGHT_LEAD_UP_BLOCKS;
+	}
+
+	private static boolean isFight(Scene scene) {
+		return switch (scene.primary().event().type()) {
+			case KILL, KILL_STREAK, BIG_DAMAGE, NEAR_DEATH, BOSS_FIGHT_START -> true;
+			default -> false;
+		};
+	}
+
+	private static boolean isBeat(EventType type) {
+		return type == EventType.FIRST_STEPS || type == EventType.ARRIVAL;
 	}
 
 	private static boolean contains(Scene scene, EventType type) {

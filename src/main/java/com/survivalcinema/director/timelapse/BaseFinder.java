@@ -160,13 +160,20 @@ public final class BaseFinder {
 			return null;
 		}
 
-		// 3. how far and how high it reaches
+		// 3. how far and how high it reaches: what most of the building is in. A few blocks further out (the chest of a
+		// first shelter, a torch put up later) would push the camera back to a view of mostly empty land.
 		double radius = MIN_RADIUS;
 		double minY = Double.MAX_VALUE;
 		double maxY = -Double.MAX_VALUE;
 		List<double[]> distances = new ArrayList<>();
 		for (Window w : members) {
 			distances.add(new double[]{horizontal(w.position(), center), w.blocks()});
+		}
+		double reach = percentile(distances, 0.9) + MIN_RADIUS;
+		for (Window w : members) {
+			if (horizontal(w.position(), center) > reach) {
+				continue;
+			}
 			minY = Math.min(minY, w.position().y());
 			maxY = Math.max(maxY, w.position().y());
 			if (w.box() != null) {
