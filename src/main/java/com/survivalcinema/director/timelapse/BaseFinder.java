@@ -22,7 +22,7 @@ import java.util.Set;
  * Building is logged in 30 second windows ({@link EventType#BUILD_ACTIVITY}: where, how many blocks). A base is not
  * built in one go: people build a bit, go mining for days, come back and build on. So all windows of every session
  * are pooled, and the densest spot wins. To count as a base the spot needs enough blocks and at least two separate
- * building visits (a different session, or half an hour of play apart): a bridge, a one-off tower or the torches of
+ * building visits (a different session or day, or half an hour of play apart): a bridge, a one-off tower or the torches of
  * a mine are spread out or done at once and don't win against a home people keep coming back to.
  */
 public final class BaseFinder {
@@ -297,12 +297,16 @@ public final class BaseFinder {
 		return session.dimensionOf(event);
 	}
 
-	/** Separate building visits: a new session, or a long time since the last window. */
+	/**
+	 * Separate building visits: a new session, a long time since the last window, or another day. A whole playthrough
+	 * in one session builds the base a bit each day, between trips out, with no half-hour pause at it.
+	 */
 	static int visits(List<Window> members) {
 		int visits = 0;
 		Window last = null;
 		for (Window w : members) {
-			if (last == null || w.sessionIndex() != last.sessionIndex() || w.tick() - last.tick() > NEW_VISIT_TICKS) {
+			if (last == null || w.sessionIndex() != last.sessionIndex() || w.tick() - last.tick() > NEW_VISIT_TICKS
+				|| w.day() != last.day()) {
 				visits++;
 			}
 			last = w;

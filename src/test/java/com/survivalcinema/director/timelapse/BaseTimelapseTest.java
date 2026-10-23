@@ -107,6 +107,21 @@ class BaseTimelapseTest {
 		assertNull(BaseFinder.find(List.of(session(0, List.of(), trail(3000, 9000, 0))), BaseFinder.Rules.DEFAULT));
 	}
 
+	/** A whole playthrough in one session: the base is built on a bit each day, between short trips out. */
+	@Test
+	void aBaseBuiltOverDaysOfOneSessionIsABase() {
+		List<GameEvent> events = new ArrayList<>();
+		for (int i = 0; i < 4; i++) {
+			events.add(build(600 + i * 700, 3, BASE_X + i, BASE_Z, 25)); // day 3, then out fighting for ten minutes
+		}
+		for (int i = 0; i < 4; i++) {
+			events.add(build(15_000 + i * 700, 4, BASE_X, BASE_Z + i, 25));
+		}
+		BaseFinder.Base base = BaseFinder.find(List.of(session(0, events, trail(3000, 9000, 0))), BaseFinder.Rules.DEFAULT);
+		assertNotNull(base);
+		assertEquals(2, base.visits());
+	}
+
 	@Test
 	void aPortalBuiltThenUsedStaysInTheOverworld() {
 		// the window was logged after the player went through: it says the Nether, the path says where it was built
