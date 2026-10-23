@@ -74,15 +74,47 @@ class PlaybackTest {
 	}
 
 	@Test
-	void picksTheNewestPictureWhoseMomentCame() {
+	void picksTheOldestPictureDueUnlessFarBehind() {
 		List<Double> times = List.of(1.0, 1.033, 1.066, 1.1);
 		assertEquals(-1, FramePicker.pick(times, 0.9), "too early for any");
 		assertEquals(0, FramePicker.pick(times, 1.0));
 		assertEquals(0, FramePicker.pick(times, 1.02));
-		assertEquals(2, FramePicker.pick(times, 1.07), "late pictures are skipped");
+		assertEquals(0, FramePicker.pick(times, 1.035), "a little late (under a frame and a half): still shown, not skipped");
+		assertEquals(2, FramePicker.pick(times, 1.07), "further behind: the late ones are skipped");
 		assertEquals(3, FramePicker.pick(times, 5));
-		assertEquals(1, FramePicker.pick(times, 1.03), "a picture a hair early is shown, not held a frame");
 		assertEquals(-1, FramePicker.pick(List.of(), 5));
+	}
+
+	/**
+	 * A 60 fps film in a game drawing 60 frames a second, give or take a few milliseconds a frame: each frame shows the
+	 * next picture, none is skipped (going by the clock alone, one in seven was skipped and another shown twice).
+	 */
+	@Test
+	void aJitteryGameAtTheFilmsRateShowsEveryPicture() {
+		java.util.ArrayDeque<Double> waiting = new java.util.ArrayDeque<>();
+		int next = 0;
+		int shown = 0;
+		int skipped = 0;
+		java.util.Random random = new java.util.Random(7);
+		for (int frame = 0; frame < 3600; frame++) {
+			// the game's frame limiter keeps to the clock; each frame lands up to 6 ms off it. The game's frames fall
+			// right on the film's, where any jitter crosses from one picture to the next (the old rule skipped 500).
+			double now = frame / 60.0 + (random.nextDouble() - 0.5) * 0.012;
+			while (waiting.size() < 8) {
+				waiting.add(next++ / 60.0);
+			}
+			int chosen = FramePicker.pick(List.copyOf(waiting), now);
+			for (int i = 0; i < chosen; i++) {
+				waiting.poll();
+				skipped++;
+			}
+			if (chosen >= 0) {
+				waiting.poll();
+				shown++;
+			}
+		}
+		assertEquals(0, skipped, "pictures skipped");
+		assertTrue(shown > 3550, "a picture nearly every frame: " + shown);
 	}
 
 	@Test
