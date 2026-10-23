@@ -1,5 +1,7 @@
 <p align="center"><img src="docs/modrinth/banner.svg" alt="Survival Cinema" width="760"></p>
 
+<p align="center"><a href="https://youtu.be/xoDm70zKEws"><img src="https://img.youtube.com/vi/xoDm70zKEws/maxresdefault.jpg" width="760" alt="Watch the trailer on YouTube"></a></p>
+
 ![divider](docs/modrinth/divider.png)
 
 ![About](docs/modrinth/header-about.png)
