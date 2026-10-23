@@ -163,7 +163,10 @@
 	"survivalcinema.player.opening": "Открываем фильм…",
 	"survivalcinema.player.failed": "Не получилось открыть фильм: %s",
 	"survivalcinema.player.no_sound": "Нет звукового устройства: фильм идёт без звука",
-	"survivalcinema.player.hint": "Пробел — пауза · ←/→ — 5 с · </> — скорость · Esc — выйти",
+	"survivalcinema.player.hint": "Пробел — пауза · ←/→ — 5 с · </> — скорость · S — сохранить кадр · Esc — выйти",
+	"survivalcinema.player.saving": "Сохраняю кадр...",
+	"survivalcinema.player.saved": "Кадр сохранён в screenshots: %s",
+	"survivalcinema.player.save_failed": "Не получилось сохранить кадр",
 	"survivalcinema.player.speed.hint": "Скорость (< и > на клавиатуре); голоса звучат без искажений",
 
 	"survivalcinema.film.intro.subtitle": "Фильм о выживании",

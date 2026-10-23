@@ -289,6 +289,9 @@ public class FilmAutoTest implements ClientModInitializer {
 				if (stageTicks == 20 && PLAY_SPEED != 1) {
 					player(mc).setSpeed(PLAY_SPEED);
 				}
+				if (stageTicks == 20 * 5) {
+					player(mc).saveFrame(); // "S": the frame at the film's own size, into screenshots/
+				}
 				if (stageTicks == 20 * PLAY_SECONDS) {
 					LOGGER.info("PLAYED: {}", player(mc).status());
 					mc.screen.onClose(); // the player logs how it went

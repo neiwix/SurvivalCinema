@@ -163,7 +163,10 @@
 	"survivalcinema.player.opening": "Opening the film...",
 	"survivalcinema.player.failed": "Could not open the film: %s",
 	"survivalcinema.player.no_sound": "No sound device: playing without sound",
-	"survivalcinema.player.hint": "Space - pause · ←/→ - 5 s · </> - speed · Esc - leave",
+	"survivalcinema.player.hint": "Space - pause · ←/→ - 5 s · </> - speed · S - save frame · Esc - leave",
+	"survivalcinema.player.saving": "Saving the frame...",
+	"survivalcinema.player.saved": "Frame saved to screenshots: %s",
+	"survivalcinema.player.save_failed": "Could not save the frame",
 	"survivalcinema.player.speed.hint": "Playing speed (< and > on the keyboard); voices keep their pitch",
 
 	"survivalcinema.film.intro.subtitle": "A survival film",

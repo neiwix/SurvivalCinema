@@ -3,6 +3,7 @@ package com.survivalcinema.client.ui;
 import com.survivalcinema.client.config.SurvivalCinemaConfig;
 import com.survivalcinema.client.flashback.FlashbackBridge;
 import com.survivalcinema.client.play.FilmPlayer;
+import com.survivalcinema.client.play.FrameSaver;
 import com.survivalcinema.director.play.Letterbox;
 import com.survivalcinema.director.play.PlayTime;
 import net.minecraft.client.Minecraft;
@@ -41,6 +42,7 @@ public final class FilmPlayerScreen extends Screen {
 	private static final int WHITE = 0xFFFFFFFF;
 	private static final int GREY = 0xFFA0A0A0;
 	private static final int SPEED_WIDTH = 40;
+	private static final long NOTICE_NANOS = 3_000_000_000L;
 	/** Like a video site's player; the sound keeps its pitch at all of them. */
 	private static final List<Double> SPEEDS = List.of(0.5, 0.75, 1.0, 1.25, 1.5, 2.0);
 
@@ -50,6 +52,9 @@ public final class FilmPlayerScreen extends Screen {
 	private @Nullable FilmPlayer player;
 	private float volume = SurvivalCinemaConfig.get().playerVolume;
 	private double speed = 1;
+	/** A word at the top for a few seconds ("frame saved"), set from the saving thread too. */
+	private volatile @Nullable Component notice;
+	private volatile long noticeNanos;
 	private long lastActivity = System.nanoTime();
 	private double lastMouseX = Double.NaN;
 	private double lastMouseY = Double.NaN;
@@ -112,6 +117,22 @@ public final class FilmPlayerScreen extends Screen {
 		}
 		speedButton.setMessage(speedLabel());
 		activity();
+	}
+
+	/** The moment on screen as a picture at the film's own size, into the screenshots folder; said at the top. */
+	public void saveFrame() {
+		if (player == null || player.texture() == null) {
+			return;
+		}
+		notice(Component.translatable("survivalcinema.player.saving"));
+		FrameSaver.save(file, player.position(), minecraft.gameDirectory.toPath().resolve("screenshots"), saved -> notice(saved == null
+			? Component.translatable("survivalcinema.player.save_failed")
+			: Component.translatable("survivalcinema.player.saved", saved.getFileName().toString())));
+	}
+
+	private void notice(Component text) {
+		notice = text;
+		noticeNanos = System.nanoTime();
 	}
 
 	private Component speedLabel() {
@@ -209,6 +230,10 @@ public final class FilmPlayerScreen extends Screen {
 			Component hint = Component.translatable("survivalcinema.player.hint");
 			graphics.drawString(font, hint, width - MARGIN - font.width(hint), MARGIN, GREY, true);
 		}
+		Component said = notice;
+		if (said != null && System.nanoTime() - noticeNanos < NOTICE_NANOS) {
+			graphics.drawCenteredString(font, said, width / 2, MARGIN + (shown ? 14 : 0), WHITE);
+		}
 		super.render(graphics, mouseX, mouseY, partialTick);
 	}
 
@@ -265,6 +290,10 @@ public final class FilmPlayerScreen extends Screen {
 		}
 		if (event.key() == GLFW.GLFW_KEY_SPACE || event.key() == GLFW.GLFW_KEY_K) {
 			togglePause();
+			return true;
+		}
+		if (event.key() == GLFW.GLFW_KEY_S) {
+			saveFrame();
 			return true;
 		}
 		// Shift+> and Shift+<, like video sites (also without Shift)
