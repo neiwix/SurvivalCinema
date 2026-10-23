@@ -26,8 +26,6 @@ final class FilmPainter {
 	static final int GREY = 0xA8A8A8;
 	static final int YELLOW = 0xFFFF55;
 
-	static final double TEXT_IN_FROM = 0.3;
-	static final double TEXT_IN_SECONDS = 0.5;
 	static final double TEXT_OUT_BEFORE_END = 1.0;
 	static final double TEXT_OUT_SECONDS = 0.5;
 	static final double FOCUS_PULL_SECONDS = 0.6;
@@ -215,36 +213,6 @@ final class FilmPainter {
 		return out;
 	}
 
-	/**
-	 * One frame of a title card.
-	 *
-	 * @param t          seconds since the card started
-	 * @param seconds    how long the card lasts
-	 * @param brightness fade from/to black of the whole picture, 0..1
-	 * @param focus      the sharp first frame of the next clip to pull focus into at the end, or null
-	 */
-	BufferedImage card(BufferedImage backdrop, @Nullable BufferedImage focus, List<CardLine> lines, double centerY,
-					   double t, double seconds, double brightness) {
-		Graphics2D g = begin(backdrop, brightness);
-		try {
-			double text = ease(clamp((t - TEXT_IN_FROM) / TEXT_IN_SECONDS))
-				* (1 - ease(clamp((t - (seconds - TEXT_OUT_BEFORE_END)) / TEXT_OUT_SECONDS)));
-			if (focus != null) {
-				double pull = ease(clamp((t - (seconds - FOCUS_PULL_SECONDS)) / FOCUS_PULL_SECONDS));
-				if (pull > 0) {
-					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (pull * brightness)));
-					g.drawImage(focus, 0, 0, null);
-				}
-			}
-			if (text > 0) {
-				drawLines(g, lines, centerY, (float) (text * brightness));
-			}
-		} finally {
-			g.dispose();
-		}
-		return frame;
-	}
-
 	/** The intro starts typing after this long, with the cursor already blinking where the title will be. */
 	static final double TYPE_FROM = 0.35;
 	/** Typing is over by this share of the card at the latest; the words then stay a moment before they fade. */
@@ -256,12 +224,21 @@ final class FilmPainter {
 	static final double CURSOR_BLINK_SECONDS = 0.5;
 
 	/**
-	 * One frame of the intro, typed out letter by letter like a chat message, with Minecraft's blinking "_" cursor:
-	 * the world's name slowly, the lines under it quicker, then everything fades before the first chapter.
+	 * One frame of the intro or a chapter card, typed out letter by letter like a chat message, with Minecraft's
+	 * blinking "_" cursor: the title slowly, the lines under it quicker, then everything fades (into the next clip's
+	 * first frame, {@code focus}, when there is one).
 	 */
-	BufferedImage typed(BufferedImage backdrop, List<CardLine> lines, double centerY, double t, double seconds, double brightness) {
+	BufferedImage typed(BufferedImage backdrop, @Nullable BufferedImage focus, List<CardLine> lines, double centerY, double t,
+						double seconds, double brightness) {
 		Graphics2D g = begin(backdrop, brightness);
 		try {
+			if (focus != null) {
+				double pull = ease(clamp((t - (seconds - FOCUS_PULL_SECONDS)) / FOCUS_PULL_SECONDS));
+				if (pull > 0) {
+					g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, (float) (pull * brightness)));
+					g.drawImage(focus, 0, 0, null);
+				}
+			}
 			double text = 1 - ease(clamp((t - (seconds - TEXT_OUT_BEFORE_END)) / TEXT_OUT_SECONDS));
 			if (text <= 0 || lines.isEmpty()) {
 				return frame;

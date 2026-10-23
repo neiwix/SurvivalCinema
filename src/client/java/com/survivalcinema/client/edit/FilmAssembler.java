@@ -783,9 +783,8 @@ public final class FilmAssembler {
 			double centre = segment.kind() == Kind.INTRO ? 0.5 : 0.42;
 			double seconds = segment.frames() / (double) fps;
 			for (int i = 0; i < segment.frames(); i++) {
-				BufferedImage picture = segment.kind() == Kind.INTRO
-					? painter.typed(backdrop, lines, centre, i / (double) fps, seconds, segment.brightness(i))
-					: painter.card(backdrop, focus, lines, centre, i / (double) fps, seconds, segment.brightness(i));
+				// the intro and every chapter type themselves out
+				BufferedImage picture = painter.typed(backdrop, focus, lines, centre, i / (double) fps, seconds, segment.brightness(i));
 				writeSilent(converter.convert(picture));
 			}
 		}
