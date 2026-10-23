@@ -211,6 +211,24 @@ class StoryContextTest {
 	}
 
 	@Test
+	void travelFootageIsNeverADayOfItsOwn() {
+		// a quiet world: moments on days 1 and 3 only, and plenty of walking all along
+		List<GameEvent> events = new ArrayList<>(List.of(
+			ev(2000, EventType.ADVANCEMENT, "minecraft:story/mine_stone", 1, 0.6, true),
+			ev(30_000, EventType.ADVANCEMENT, "minecraft:story/smelt_iron", 3, 0.6, true)));
+		for (int t = 0; t < 40_000; t += 4000) {
+			events.add(ev(t + 100, EventType.NEW_DAY, "day", 1 + t / 14_000, 0.1, false));
+		}
+		SessionData session = Worlds.session(0, 40_000, events);
+		List<Scene> scenes = new SceneBuilder().build(new HighlightScorer().score(List.of(session)));
+		List<Chapter> chapters = new StoryPlanner().plan(List.of(session), scenes, new SceneryFinder().find(List.of(session)), 300);
+		for (Chapter chapter : chapters) {
+			assertTrue(chapter.scenes().stream().anyMatch(s -> s.primary().event().type() != EventType.SCENERY),
+				"day " + chapter.dayFrom() + " is only travel footage");
+		}
+	}
+
+	@Test
 	void armourIsPutOnAfterItIsMade() {
 		int[] armour = SceneBuilder.window(ev(1000, EventType.ADVANCEMENT, "minecraft:story/obtain_armor", 5, 0.6, true));
 		int[] other = SceneBuilder.window(ev(1000, EventType.ADVANCEMENT, "minecraft:story/mine_stone", 1, 0.6, true));

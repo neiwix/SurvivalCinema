@@ -196,6 +196,9 @@ public final class StoryPlanner {
 				if (isVoiceOnly(chosen) && voiceOnlyTicks + filmTicks(chosen) > budget * VOICE_ONLY_SHARE) {
 					continue;
 				}
+				if (chosen.primary().event().type() == EventType.SCENERY && !hasMomentOn(chosen.day())) {
+					continue; // a day of only travel footage would be a chapter of someone running, cut off by the next card
+				}
 				if (overCap(best)) {
 					ledUpTo.add(leadsUpToSelected(best)); // over the limit only as the beginning of that fight
 				}
@@ -255,6 +258,11 @@ public final class StoryPlanner {
 					taken++;
 				}
 			}
+		}
+
+		/** A real moment (not travel footage) of that in-game day is in the film already. */
+		private boolean hasMomentOn(int day) {
+			return selected.stream().anyMatch(s -> s.day() == day && s.primary().event().type() != EventType.SCENERY);
 		}
 
 		private boolean hasEpilogue() {
